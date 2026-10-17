@@ -2132,36 +2132,67 @@ function aplicarCopiaSal(){
 }
 
 // ═══ REFEITORIO DIA A DIA ═══
+// Periodo padrao do refeitorio: dia 20 do mes anterior ate dia 19 do mes de referencia
+var RF_INI=20,RF={};
+function rfPadrao(m){var p=m.split("-").map(Number);return {ini:ptD(new Date(p[0],p[1]-2,RF_INI,12)),fim:ptD(new Date(p[0],p[1]-1,RF_INI-1,12))};}
+function rfDatas(ini,fim){var l=[],d=new Date(ini+"T12:00:00"),f=new Date(fim+"T12:00:00");for(;d<=f;d.setDate(d.getDate()+1))l.push(ptD(d));return l;}
 function abrirRefeit(id){
   var e=DB.emp.find(function(x){return x.id===id;});if(!e)return;
-  var m=empMes(),p=m.split("-").map(Number),ult=new Date(p[0],p[1],0).getDate(),d=(e.refd&&e.refd[m])||{};
-  var rows="";
-  for(var i=1;i<=ult;i++){
-    var dd=String(i).padStart(2,"0"),dt=m+"-"+dd,dw=new Date(p[0],p[1]-1,i).getDay(),fer=ptFeriado(dt);
-    var cls=fer?"rf-fer":(dw===0||dw===6)?"rf-fds":"";
-    rows+="<tr class='"+cls+"'><td class='c' style='font-weight:700'>"+dd+"/"+String(p[1]).padStart(2,"0")+"</td>"
-      +"<td>"+DSEM[dw]+(fer?" <span style='font-size:10.5px;color:#a93226;font-weight:700'>&middot; "+esc(fer)+"</span>":"")+"</td>"
-      +"<td class='in'><input type='text' inputmode='decimal' class='etab-sal rf-in' data-dd='"+dd+"' data-u='"+(cls?"0":"1")+"' value='"+(d[dd]?(+d[dd]).toFixed(2).replace(".",","):"")+"' placeholder='0,00' oninput='rfTotal()' onkeydown='salKey(event,this)' data-col='rf'/></td></tr>";
-  }
+  var m=empMes(),d=(e.refd&&e.refd[m])||{},vals={};
+  // lancamentos antigos guardavam so o dia ("05"); os novos guardam a data completa
+  Object.keys(d).forEach(function(k){vals[k.length===2?m+"-"+k:k]=d[k];});
+  var pp=(e.refp&&e.refp[m])||rfPadrao(m);
+  RF={id:id,m:m,vals:vals,ini:pp.ini,fim:pp.fim};
   var mm=document.getElementById("md-ref");if(mm)mm.remove();
   var div=document.createElement("div");div.className="mdl-bg open";div.id="md-ref";div.style.zIndex="9500";
-  div.innerHTML="<div class='mdl' role='dialog' aria-modal='true' style='width:520px'>"
+  div.innerHTML="<div class='mdl' role='dialog' aria-modal='true' style='width:540px'>"
     +"<div class='mdl-hd'><div class='mdl-tt'><i class='ti ti-tools-kitchen-2'></i>Refeitorio - "+fmtM(m)+"</div>"
     +"<button class='mdl-x' onclick=\"document.getElementById('md-ref').remove()\" aria-label='Fechar'><i class='ti ti-x'></i></button></div><div class='mdl-bd'>"
-    +"<input type='hidden' id='rf-id' value='"+e.id+"'/>"
-    +"<div class='who'><strong>"+esc(e.nome)+"</strong><span>"+esc(e.func||"")+" &middot; lancamento diario de "+fmtM(m)+"</span></div>"
+    +"<div class='who'><strong>"+esc(e.nome)+"</strong><span>"+esc(e.func||"")+" &middot; <span id='rf-perlb'></span></span></div>"
+    +"<div style='display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:.6rem'>"
+    +"<div><div class='lbl'>De</div><input type='date' id='rf-ini' value='"+RF.ini+"' onchange='rfSetPer()' style='width:150px'/></div>"
+    +"<div><div class='lbl'>Ate</div><input type='date' id='rf-fim' value='"+RF.fim+"' onchange='rfSetPer()' style='width:150px'/></div>"
+    +"<button type='button' class='btng btn-ic' onclick='rfPadraoBtn()' title='Voltar para dia "+RF_INI+" a dia "+(RF_INI-1)+"'><i class='ti ti-refresh'></i>Padrao "+RF_INI+" a "+(RF_INI-1)+"</button></div>"
     +"<div style='display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:.6rem'>"
     +"<span class='lbl' style='margin:0'>Valor por dia</span><input type='text' id='rf-pad' inputmode='decimal' placeholder='0,00' style='width:100px'/>"
     +"<button type='button' class='btng' onclick='rfPreencher()'>Preencher dias uteis vazios</button>"
     +"<span style='display:flex;gap:10px;margin-left:auto;font-size:11px;color:#666'><span><span class='cal-dot' style='background:#e3e5e8'></span> Sab/Dom</span><span><span class='cal-dot' style='background:#f6dede'></span> Feriado</span></span></div>"
-    +"<div class='etab-wrap' style='max-height:52vh'><table class='etab rf-tab'><thead><tr><th class='c' style='cursor:default'>DIA</th><th style='cursor:default'>DIA DA SEMANA</th><th class='c' style='cursor:default'>VALOR (R$)</th></tr></thead>"
-    +"<tbody>"+rows+"</tbody><tfoot><tr><td colspan='2'>TOTAL DO MES</td><td class='r' id='rf-tot'></td></tr></tfoot></table></div>"
-    +"<div class='hint'>Sabados, domingos e feriados aparecem em outra cor e tambem podem receber valor. O total vai para a coluna Refeitorio de "+fmtM(m)+".</div>"
+    +"<div class='etab-wrap' style='max-height:48vh'><table class='etab rf-tab'><thead><tr><th class='c' style='cursor:default'>DIA</th><th style='cursor:default'>DIA DA SEMANA</th><th class='c' style='cursor:default'>VALOR (R$)</th></tr></thead>"
+    +"<tbody id='rf-body'></tbody><tfoot><tr><td colspan='2'>TOTAL DO PERIODO</td><td class='r' id='rf-tot'></td></tr></tfoot></table></div>"
+    +"<div class='hint'>Periodo padrao: dia "+RF_INI+" do mes anterior ate dia "+(RF_INI-1)+" de "+fmtM(m)+". Altere as datas acima se precisar. Sabados, domingos e feriados aparecem em outra cor e tambem podem receber valor. O total vai para a coluna Refeitorio de "+fmtM(m)+".</div>"
     +"<div class='mdl-ft'><button class='btng' onclick=\"document.getElementById('md-ref').remove()\">Cancelar</button>"
     +"<button class='btnp btn-ic' onclick='rfSalvar()'><i class='ti ti-check'></i>Salvar</button></div></div></div>";
   document.body.appendChild(div);
   div.addEventListener("mousedown",function(ev){if(ev.target===div)div.remove();});
+  rfRows();
+}
+function rfRows(){
+  var rows=rfDatas(RF.ini,RF.fim).map(function(dt){
+    var dw=new Date(dt+"T12:00:00").getDay(),fer=ptFeriado(dt),cls=fer?"rf-fer":(dw===0||dw===6)?"rf-fds":"",v=RF.vals[dt];
+    return "<tr class='"+cls+"'><td class='c' style='font-weight:700'>"+dt.slice(8)+"/"+dt.slice(5,7)+"</td>"
+      +"<td>"+DSEM[dw]+(fer?" <span style='font-size:10.5px;color:#a93226;font-weight:700'>&middot; "+esc(fer)+"</span>":"")+"</td>"
+      +"<td class='in'><input type='text' inputmode='decimal' class='etab-sal rf-in' data-dt='"+dt+"' data-u='"+(cls?"0":"1")+"' value='"+(v?(+v).toFixed(2).replace(".",","):"")+"' placeholder='0,00' oninput='rfTotal()' onkeydown='salKey(event,this)' data-col='rf'/></td></tr>";
+  }).join("");
+  document.getElementById("rf-body").innerHTML=rows;
+  var pd=rfPadrao(RF.m),cust=RF.ini!==pd.ini||RF.fim!==pd.fim;
+  document.getElementById("rf-perlb").innerHTML="periodo "+fmtD(RF.ini)+" a "+fmtD(RF.fim)+(cust?" <b style='color:#8a5a00'>(personalizado)</b>":"");
   rfTotal();
+}
+// guarda o que ja foi digitado antes de trocar o periodo
+function rfGuardar(){
+  document.querySelectorAll("#md-ref .rf-in").forEach(function(i){var v=parseMon(i.value);if(v===null)delete RF.vals[i.dataset.dt];else if(!isNaN(v))RF.vals[i.dataset.dt]=v;});
+}
+function rfSetPer(){
+  var a=gv("rf-ini"),b=gv("rf-fim");
+  if(!a||!b||b<a||rfDatas(a,b).length>62){
+    alert(!a||!b?"Informe as duas datas.":b<a?"A data final nao pode ser anterior a inicial.":"O periodo pode ter no maximo 62 dias.");
+    document.getElementById("rf-ini").value=RF.ini;document.getElementById("rf-fim").value=RF.fim;return;
+  }
+  rfGuardar();RF.ini=a;RF.fim=b;rfRows();
+}
+function rfPadraoBtn(){
+  rfGuardar();var p=rfPadrao(RF.m);RF.ini=p.ini;RF.fim=p.fim;
+  document.getElementById("rf-ini").value=p.ini;document.getElementById("rf-fim").value=p.fim;rfRows();
 }
 function rfTotal(){
   var t=0,bad=false;
@@ -2174,10 +2205,19 @@ function rfPreencher(){
   rfTotal();
 }
 function rfSalvar(){
-  var id=gv("rf-id"),m=empMes(),d={},bad="";
-  document.querySelectorAll("#md-ref .rf-in").forEach(function(i){var v=parseMon(i.value);if(isNaN(v))bad=i.dataset.dd;else if(v)d[i.dataset.dd]=+v.toFixed(2);});
-  if(bad){alert("Valor invalido no dia "+bad+".");return;}
-  DB.emp=DB.emp.map(function(e){if(e.id!==id)return e;var n=Object.assign({},e);n.refd=Object.assign({},n.refd||{});n.refd[m]=d;return n;});
+  var d={},bad="";
+  document.querySelectorAll("#md-ref .rf-in").forEach(function(i){var v=parseMon(i.value);if(isNaN(v))bad=i.dataset.dt;else if(v)d[i.dataset.dt]=+v.toFixed(2);});
+  if(bad){alert("Valor invalido no dia "+fmtD(bad)+".");return;}
+  var pd=rfPadrao(RF.m),cust=RF.ini!==pd.ini||RF.fim!==pd.fim;
+  DB.emp=DB.emp.map(function(e){
+    if(e.id!==RF.id)return e;
+    var n=Object.assign({},e);
+    n.refd=Object.assign({},n.refd||{});n.refd[RF.m]=d;
+    n.refp=Object.assign({},n.refp||{});
+    if(cust)n.refp[RF.m]={ini:RF.ini,fim:RF.fim};else delete n.refp[RF.m];
+    if(!Object.keys(n.refp).length)delete n.refp;
+    return n;
+  });
   dbSave();document.getElementById("md-ref").remove();filtEmp();
 }
 // Enter / setas: vai para o salario da linha de baixo ou de cima (como na planilha)

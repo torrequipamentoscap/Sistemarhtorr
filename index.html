@@ -433,6 +433,28 @@ input:focus-visible,select:focus-visible{outline:none}
 .etab-mft{display:flex;justify-content:flex-end;gap:6px;margin-top:.5rem}
 .etab-mft .btnp,.etab-mft .btng{padding:.4rem .8rem;font-size:12px}
 /* Cartao ponto */
+#pc-campos input::placeholder{color:#a6afbb;font-style:italic;font-weight:400}
+.pc-tabs{display:flex;gap:4px;background:#f1f4f8;padding:4px;border-radius:10px;margin-bottom:1rem}
+.pc-tabs button{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:none;background:transparent;padding:.5rem .6rem;border-radius:7px;font-size:12.5px;font-weight:700;color:#666;cursor:pointer;font-family:inherit}
+.pc-tabs button.on{background:#fff;color:#2b3035;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.pc-sel{border:1.5px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:.9rem}
+.pc-selhd{display:flex;gap:6px;align-items:center;padding:.45rem .5rem;background:#f8fafc;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.pc-selhd input[type=text]{flex:1;min-width:150px;padding:.35rem .6rem;font-size:12.5px}
+.pc-selhd .btng{padding:.3rem .6rem;font-size:11.5px}
+.pc-lista{max-height:190px;overflow:auto}
+.pc-it{display:flex;align-items:center;gap:8px;padding:.32rem .7rem;font-size:12.5px;cursor:pointer;border-bottom:1px solid #f0f2f5}
+.pc-it:hover{background:#f6f8fb}
+.pc-it.on{background:#eef4fc}
+.pc-it input{width:auto;margin:0}
+.pc-it .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pc-it .fn{color:#999;font-size:11px}
+.pc-it .bdg{font-size:9.5px;padding:.1rem .4rem}
+.pc-cnt{font-size:11.5px;color:#555;font-weight:700;padding:.35rem .7rem;background:#f8fafc;border-top:1px solid var(--line)}
+.bdg.pc-bconf{background:#fdf0cf;color:#8a5a00;border:1px solid #f0d58c}
+.pc-conf{display:flex;gap:10px;align-items:flex-start;border:1.5px solid #f0d58c;background:#fffaf0;border-radius:8px;padding:.6rem .75rem;margin-bottom:.9rem}
+.pc-conf select{width:auto;min-width:150px}
+.pc-conf .t{font-weight:800;font-size:12.5px;color:#2b3035}
+.pc-conf .hint{margin:.15rem 0 0}
 .pt-band{background:#2b3035;color:#fff;font-weight:800;text-align:center;padding:.5rem;border-radius:6px;font-size:13.5px}
 .pt-sum{display:grid;grid-template-columns:auto 90px 70px;gap:0;border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:12.5px;min-width:380px}
 .pt-sum>div{display:contents}
@@ -5190,10 +5212,19 @@ var PT_F=["e1","s1","e2","s2","e3","s3"];
 var PT_FL=["Entrada 1","Saida 1","Entrada 2","Saida 2 (Almoco)","Entrada 3 (Retorno)","Saida 3"];
 var DSEM=["Domingo","Segunda-feira","Terca-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sabado"];
 var PT={eid:"",per:""};
-function ptCfg(){
+// ptCfg() = configuracao geral; ptCfg(eid) = geral + personalizacao do colaborador ({id:"_cfgE|eid"} e {id:"_pad|eid"})
+var PT_CK=["ini","carga","cargaSab","tolE","tolF"];
+function ptCfgEmp(eid){return (DB.ponto||[]).find(function(x){return x.id==="_cfgE|"+eid;})||null;}
+function ptCfg(eid){
   var c=(DB.ponto||[]).find(function(x){return x.id==="_cfg";})||{};
-  return {ini:c.ini||20,carga:c.carga!=null?c.carga:528,cargaSab:c.cargaSab||0,tolE:c.tolE!=null?c.tolE:30,tolF:c.tolF!=null?c.tolF:10,
-    pad:c.pad||["07:00","","","12:00","13:00","16:48"],fer:c.fer||[]};
+  var r={ini:c.ini||20,carga:c.carga!=null?c.carga:528,cargaSab:c.cargaSab||0,tolE:c.tolE!=null?c.tolE:30,tolF:c.tolF!=null?c.tolF:10,
+    pad:c.pad||["07:00","","","12:00","13:00","16:48"],fer:c.fer||[],conf:false,pers:false};
+  if(eid){
+    var o=ptCfgEmp(eid),pe=ptPadEmp(eid);
+    if(o){PT_CK.forEach(function(k){if(o[k]!=null)r[k]=o[k];});r.conf=!!o.conf;r.pers=true;}
+    if(pe){r.pad=pe;r.pers=true;}
+  }
+  return r;
 }
 // "4:51","0451","451","4","4h51","04.51" -> minutos. "" -> null. invalido -> NaN
 function ptParse(v){
@@ -5214,8 +5245,8 @@ function ptHH(min){var a=Math.round(min);return String(Math.floor(a/60)).padStar
 function ptDec(min){return ((min||0)/60).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});}
 function ptD(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
 // Periodo de referencia "AAAA-MM" -> lista de datas
-function ptRange(per){
-  var c=ptCfg(),p=per.split("-").map(Number),ini,fim;
+function ptRange(per,eid){
+  var c=ptCfg(eid),p=per.split("-").map(Number),ini,fim;
   if(c.ini<=1){ini=new Date(p[0],p[1]-1,1,12);fim=new Date(p[0],p[1],0,12);}
   else{ini=new Date(p[0],p[1]-2,c.ini,12);fim=new Date(p[0],p[1]-1,c.ini-1,12);}
   var l=[];for(var d=new Date(ini);d<=fim;d.setDate(d.getDate()+1))l.push(ptD(d));
@@ -5227,7 +5258,7 @@ function ptPerAtual(){
   return h.getFullYear()+"-"+String(h.getMonth()+1).padStart(2,"0");
 }
 function ptPrev(per){var p=per.split("-").map(Number),d=new Date(p[0],p[1]-2,1);return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
-function ptPerLb(per){var r=ptRange(per);return fmtM(per)+" ("+fmtD(r[0])+" a "+fmtD(r[r.length-1])+")";}
+function ptPerLb(per,eid){var r=ptRange(per,eid);return fmtM(per)+" ("+fmtD(r[0])+" a "+fmtD(r[r.length-1])+")";}
 // Feriados nacionais (fixos + Sexta-feira Santa) e feriados extras da configuracao
 var _ferCache={};
 function ptFeriado(data){
@@ -5250,23 +5281,25 @@ function ptCard(eid,per,criar){
   return c||null;
 }
 // Calculo de um dia
-function ptDia(card,data){
-  var c=ptCfg(),dw=new Date(data+"T12:00:00").getDay(),fer=ptFeriado(data),d=(card&&card.dias[data])||{};
+function ptDia(card,data,eid){
+  eid=eid||(card&&card.eid)||"";
+  var c=ptCfg(eid),dw=new Date(data+"T12:00:00").getDay(),fer=ptFeriado(data),d=(card&&card.dias[data])||{};
   var def=fer||dw===0?0:dw===6?c.cargaSab:(card&&card.carga!=null?card.carga:c.carga);
   var cg=d.cg!=null?d.cg:def;
   var ms=PT_F.map(function(f){return ptParse(d[f]);}).filter(function(x){return x!==null&&!isNaN(x);});
   var tot=0;for(var i=0;i+1<ms.length;i+=2){var x=ms[i+1]-ms[i];if(x<0)x+=1440;tot+=x;}
-  var r={data:data,dw:dw,fer:fer,d:d,cg:cg,def:def,tem:ms.length>0,inc:ms.length%2===1,tot:tot,fut:data>hoje(),dif:0,ext:0,fal:0};
+  var r={data:data,dw:dw,fer:fer,d:d,cg:cg,def:def,tem:ms.length>0,inc:ms.length%2===1,tot:tot,fut:data>hoje(),dif:0,ext:0,fal:0,conf:c.conf};
   if(r.fut&&!r.tem)return r;
   if(!r.tem&&cg===0)return r;
   r.dif=tot-cg;
   r.ext=r.dif>c.tolE?r.dif:0;
   r.fal=-r.dif>c.tolF?-r.dif:0;
   if(d.ab){r.fal=0;}
+  if(c.conf){r.ext=0;r.fal=0;} // cargo de confianca (art. 62, II CLT): sem horas extras nem faltas de horas
   return r;
 }
 function ptResumo(card,eid,per){
-  var dias=ptRange(per).map(function(d){return ptDia(card,d);});
+  var dias=ptRange(per,eid).map(function(d){return ptDia(card,d,eid);});
   var s={dias:dias,tot:0,cg:0,ext:0,fal:0,ab:0,trab:0,inc:0};
   dias.forEach(function(r){if(r.fut&&!r.tem)return;s.tot+=r.tot;s.cg+=r.cg;s.ext+=r.ext;s.fal+=r.fal;if(r.d.ab)s.ab++;if(r.tem)s.trab++;if(r.inc)s.inc++;});
   s.mes=s.ext-s.fal;
@@ -5283,14 +5316,14 @@ function ptAntAuto(eid,per,n){
   return s-ptPagoTot(pc); // horas pagas saem do saldo que passa para o periodo seguinte
 }
 function ptResumoSimples(card,eid,per,n){
-  var m=0;ptRange(per).forEach(function(d){var r=ptDia(card,d);m+=r.ext-r.fal;});
+  var m=0;ptRange(per,eid).forEach(function(d){var r=ptDia(card,d,eid);m+=r.ext-r.fal;});
   var ant=card.ant!=null?card.ant:ptAntAuto(eid,per,n);
   return ant+m;
 }
 // Colaboradores com vinculo no periodo
 function ptEmps(per){
-  var r=ptRange(per),ini=r[0],fim=r[r.length-1];
   return DB.emp.filter(function(e){
+    var r=ptRange(per,e.id),ini=r[0],fim=r[r.length-1];
     if(e.adm&&e.adm>fim)return false;
     if(e.dem)return e.dem>=ini;
     return isAtivo(e)||(e.inat&&e.inat>=ini);
@@ -5311,20 +5344,20 @@ function rPonto(){
   if(!PT.eid||!emps.some(function(e){return e.id===PT.eid;}))PT.eid=emps.length?emps[0].id:"";
   var o=ptPerOpts(per),selSt="padding:.4rem .7rem;border:1.5px solid var(--line);border-radius:8px;font-size:13px;color:"+B+";font-weight:700;background:#fff;width:auto";
   var c=ptCfg();
-  var head="<div class='pg-hd'><div><h1 class='h1'>Cartao Ponto</h1><div class='sub'>Controle diario de horas &middot; periodo de apuracao dia "+c.ini+" a dia "+(c.ini>1?c.ini-1:"ultimo")+"</div></div>"
+  var head="<div class='pg-hd'><div><h1 class='h1'>Cartao Ponto</h1><div class='sub'>Controle diario de horas &middot; periodo de apuracao dia "+ptCfg(PT.eid).ini+" a dia "+(ptCfg(PT.eid).ini>1?ptCfg(PT.eid).ini-1:"ultimo")+(ptCfg(PT.eid).ini!==c.ini?" (proprio deste colaborador; geral: dia "+c.ini+")":"")+"</div></div>"
     +"<div style='display:flex;gap:8px;flex-wrap:wrap'><button class='btng btn-ic pt-act' onclick='ptAbrirCfg()'><i class='ti ti-settings'></i>Configuracoes</button>"
     +"<button class='btng btn-ic' onclick=\"go('rponto')\"><i class='ti ti-report'></i>Relatorio de Ponto</button></div></div>"
     +"<div class='card' style='margin-bottom:1rem;padding:.8rem 1rem'><div style='display:flex;gap:10px;flex-wrap:wrap;align-items:center'>"
     +"<button class='btng' title='Colaborador anterior' onclick='ptNav(-1)'><i class='ti ti-chevron-left'></i></button>"
     +"<select id='pt-emp' onchange='PT.eid=this.value;rPonto()' style='width:320px;max-width:100%'>"
-    +(emps.length?emps.map(function(e){var cd=ptCard(e.id,per);return "<option value='"+e.id+"'"+(e.id===PT.eid?" selected":"")+">"+esc(e.nome)+(cd?" ✓":"")+(isAtivo(e)?"":" (inativo)")+"</option>";}).join(""):"<option value=''>Nenhum colaborador no periodo</option>")
+    +(emps.length?emps.map(function(e){var cd=ptCard(e.id,per);return "<option value='"+e.id+"'"+(e.id===PT.eid?" selected":"")+">"+esc(e.nome)+(cd?" ✓":"")+(isAtivo(e)?"":" (inativo)")+(ptCfg(e.id).conf?" · confianca":"")+"</option>";}).join(""):"<option value=''>Nenhum colaborador no periodo</option>")
     +"</select><button class='btng' title='Proximo colaborador' onclick='ptNav(1)'><i class='ti ti-chevron-right'></i></button>"
     +"<span style='font-size:12px;font-weight:600;color:#555;margin-left:8px'>Mes:</span><select id='pt-mes' onchange='ptSetPer()' style='"+selSt+"'>"+o.mes+"</select>"
     +"<span style='font-size:12px;font-weight:600;color:#555'>Ano:</span><select id='pt-ano' onchange='ptSetPer()' style='"+selSt+"'>"+o.ano+"</select>"
-    +"<span class='hint' style='margin:0'>"+ptPerLb(per)+" &middot; ✓ = cartao ja lancado</span></div></div>";
+    +"<span class='hint' style='margin:0'>"+ptPerLb(per,PT.eid)+" &middot; ✓ = cartao ja lancado</span></div></div>";
   if(!PT.eid){document.getElementById("p-ponto").innerHTML=head+"<div class='card'><div class='empty'><i class='ti ti-clock-off'></i>Nenhum colaborador com vinculo neste periodo.</div></div>"+ptCfgModal();return;}
-  var e=DB.emp.find(function(x){return x.id===PT.eid;}),card=ptCard(PT.eid,per),s=ptResumo(card,PT.eid,per);
-  var rng=ptRange(per);
+  var e=DB.emp.find(function(x){return x.id===PT.eid;}),card=ptCard(PT.eid,per),s=ptResumo(card,PT.eid,per),ce=ptCfg(PT.eid);
+  var rng=ptRange(per,PT.eid);
   function th(t){return "<th class='c' style='cursor:default;white-space:normal;line-height:1.2'>"+t+"</th>";}
   var rows=s.dias.map(function(r){
     var dk=r.data.replace(/-/g,""),fds=r.dw===0||r.dw===6,cls=r.fer?"pt-fer":fds&&r.cg===0?"pt-fds":"";
@@ -5348,8 +5381,12 @@ function rPonto(){
     +"<div style='display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:.8rem 0'>"
     +"<div style='display:flex;flex-direction:column;gap:8px;min-width:260px'>"
     +"<div style='font-size:12.5px;color:#555'>"+esc(e.func||"")+(e.horario?" &middot; Horario: "+esc(e.horario):"")+"</div>"
+    +(ce.conf||ce.pers?"<div style='display:flex;gap:6px;flex-wrap:wrap'>"
+      +(ce.conf?"<span class='bdg pc-bconf' title='Art. 62, II da CLT: nao gera horas extras nem faltas de horas'><i class='ti ti-shield-star'></i> CARGO DE CONFIANCA &middot; sem extras/faltas</span>":"")
+      +(ce.ini!==c.ini?"<span class='bdg bdg-clt' title='Periodo de apuracao proprio deste colaborador'><i class='ti ti-calendar'></i> Periodo dia "+ce.ini+" a dia "+(ce.ini>1?ce.ini-1:"ultimo")+"</span>":"")
+      +(ce.pers?"<span class='bdg bdg-clt pt-act' style='cursor:pointer' title='Este colaborador tem configuracao propria. Clique para ver.' onclick=\"ptAbrirCfg('emp')\"><i class='ti ti-user-cog'></i> Configuracao propria</span>":"")+"</div>":"")
     +"<div style='display:flex;align-items:center;gap:8px;font-size:12.5px'><span class='lbl' style='margin:0'>Carga diaria deste colaborador</span>"
-    +"<input type='text' id='pt-carga' class='pt-in' style='width:80px;border:1.5px solid var(--line)!important;border-radius:6px!important' value='"+(card&&card.carga!=null?ptHH(card.carga):"")+"' placeholder='"+ptHM(c.carga)+"' title='Seg a sex. Vazio = padrao das configuracoes' onchange='ptSetCarga(this)'/></div>"
+    +"<input type='text' id='pt-carga' class='pt-in' style='width:80px;border:1.5px solid var(--line)!important;border-radius:6px!important' value='"+(card&&card.carga!=null?ptHH(card.carga):"")+"' placeholder='"+ptHM(ce.carga)+"' title='Seg a sex, so neste periodo. Vazio = padrao das configuracoes' onchange='ptSetCarga(this)'/></div>"
     +"<div style='display:flex;gap:8px;flex-wrap:wrap'>"
     +"<button class='btnp btn-ic pt-act' onclick='ptPreencher()'><i class='ti ti-wand'></i>Preencher com horario padrao</button>"
     +"<button class='btng btn-ic pt-act' onclick='ptLimpar()'><i class='ti ti-eraser'></i>Limpar periodo</button></div>"
@@ -5360,7 +5397,7 @@ function rPonto(){
     +th("Data")+th("Dia da Semana")+PT_FL.map(th).join("")+th("Total Trabalhado no Dia")+th("Carga Horaria")+th("Dif. (Trab. - Padrao)")+th("Horas Extras Diarias")+th("Horas Faltas Diarias")+th("Abonado?")+th("Observacao")
     +"</tr></thead><tbody>"+rows+"</tbody></table></div>"
     +"<div class='hint' style='margin-top:.6rem'>Digite os horarios como 0451 ou 4:51 (Enter/setas descem na coluna). Total = soma dos pares de batidas em ordem (Entrada 1 &rarr; proxima saida...). "
-    +"Horas extras contam acima de "+c.tolE+" min/dia e faltas acima de "+c.tolF+" min/dia (ajuste em Configuracoes). Abonado = Sim zera a falta do dia. <i class='ti ti-alert-circle' style='color:"+RED+"'></i> = existe lancamento de falta/atraso na tela Lancamentos.</div></div>"
+    +(ce.conf?"Cargo de confianca: horas extras e faltas de horas nao sao calculadas (ajuste em Configuracoes &rarr; Por colaborador). ":"Horas extras contam acima de "+ce.tolE+" min/dia e faltas acima de "+ce.tolF+" min/dia (ajuste em Configuracoes). ")+" Abonado = Sim zera a falta do dia. <i class='ti ti-alert-circle' style='color:"+RED+"'></i> = existe lancamento de falta/atraso na tela Lancamentos.</div></div>"
     +ptCfgModal();
   ptAtualizar();
 }
@@ -5432,7 +5469,7 @@ function ptPagar(idx){
   div.innerHTML="<div class='mdl' role='dialog' aria-modal='true' style='width:470px'>"
     +"<div class='mdl-hd'><div class='mdl-tt'><i class='ti ti-cash'></i>"+(ed?"Editar lancamento de horas":neg?"Descontar horas do saldo":"Pagar horas do saldo")+"</div>"
     +"<button class='mdl-x' onclick=\"document.getElementById('md-ptpag').remove()\" aria-label='Fechar'><i class='ti ti-x'></i></button></div><div class='mdl-bd'>"
-    +"<div class='who'><strong>"+esc(e?e.nome:"")+"</strong><span>"+ptPerLb(PT.per)+"</span></div>"
+    +"<div class='who'><strong>"+esc(e?e.nome:"")+"</strong><span>"+ptPerLb(PT.per,PT.eid)+"</span></div>"
     +"<div class='pt-sum' style='min-width:0;margin-bottom:.9rem'>"
     +"<div><span>Saldo total acumulado</span><b>"+ptHM(s.acum)+"</b><b>"+ptDec(s.acum)+"</b></div>"
     +"<div><span>Ja pago neste periodo"+(ed?" (sem este lancamento)":"")+"</span><b>"+ptHM(jaPago)+"</b><b>"+ptDec(jaPago)+"</b></div>"
@@ -5518,7 +5555,7 @@ function ptPreencher(){
   div.innerHTML="<div class='mdl' role='dialog' aria-modal='true' style='width:560px'>"
     +"<div class='mdl-hd'><div class='mdl-tt'><i class='ti ti-wand'></i>Preencher com horario padrao</div>"
     +"<button class='mdl-x' onclick=\"document.getElementById('md-ppad').remove()\" aria-label='Fechar'><i class='ti ti-x'></i></button></div><div class='mdl-bd'>"
-    +"<div class='who'><strong>"+esc(e?e.nome:"")+"</strong><span>"+ptPerLb(PT.per)+(e&&e.horario?" &middot; Horario no cadastro: "+esc(e.horario):"")+"</span></div>"
+    +"<div class='who'><strong>"+esc(e?e.nome:"")+"</strong><span>"+ptPerLb(PT.per,PT.eid)+(e&&e.horario?" &middot; Horario no cadastro: "+esc(e.horario):"")+"</span></div>"
     +"<div class='fr'><label class='lbl'>Horario que sera lancado <span class='opt'>("+(pe?"padrao deste colaborador":"padrao geral das Configuracoes")+" - altere se precisar)</span></label>"
     +"<div style='display:grid;grid-template-columns:repeat(3,1fr);gap:6px'>"
     +PT_F.map(function(f,i){return "<div><div class='hint' style='margin:0 0 2px'>"+PT_FL[i]+"</div><input type='text' id='pp-"+f+"' value='"+esc(pad[i]||"")+"' placeholder='--:--' oninput='ptPadPrev()'/></div>";}).join("")
@@ -5537,13 +5574,13 @@ function ptPreencher(){
 function ptPadLer(){var pad=[];for(var i=0;i<PT_F.length;i++){var m=ptParse(gv("pp-"+PT_F[i]));if(isNaN(m))return null;pad.push(m===null?"":ptHH(m));}return pad;}
 function ptPadAlvo(modo){
   var card=ptCard(PT.eid,PT.per);
-  return ptRange(PT.per).filter(function(d){var r=ptDia(card,d);return !r.fut&&r.cg>0&&(modo==="todos"||!r.tem);});
+  return ptRange(PT.per,PT.eid).filter(function(d){var r=ptDia(card,d,PT.eid);return !r.fut&&r.cg>0&&(modo==="todos"||!r.tem);});
 }
 function ptPadPrev(){
   var pad=ptPadLer(),el=document.getElementById("pp-prev"),inf=document.getElementById("pp-info");if(!el)return;
   var modo=_radio("pp-modo")||"vazio",n=ptPadAlvo(modo).length;
   if(!pad){el.innerHTML="<span style='color:"+RED+"'>Horario invalido. Use HH:MM.</span>";}
-  else{var t=ptPadTot(pad),cg=ptDia(ptCard(PT.eid,PT.per),"2000-01-05").def;
+  else{var t=ptPadTot(pad),cg=ptDia(ptCard(PT.eid,PT.per),"2000-01-05",PT.eid).def;
     el.innerHTML="Total do dia: <b>"+ptHM(t.t)+"</b> &middot; carga "+ptHM(cg)+" &middot; diferenca "+ptHM(t.t-cg,true)+(t.inc?" <span style='color:"+RED+"'>&middot; numero impar de batidas</span>":"");}
   inf.innerHTML="<i class='ti ti-info-circle'></i> "+n+" dia"+(n!==1?"s":"")+" ser"+(n!==1?"ao":"a")+" preenchido"+(n!==1?"s":"")+". Fins de semana, feriados, dias com carga 0 e dias futuros nao sao alterados.";
 }
@@ -5567,23 +5604,151 @@ function ptLimpar(){
   if(!confirm("Apagar todos os horarios deste periodo do colaborador? (saldo anterior e carga tambem)"))return;
   DB.ponto=DB.ponto.filter(function(x){return x.id!==card.id;});dbSave();rPonto();
 }
-// Configuracoes
-function ptCfgModal(){
-  var c=ptCfg();
-  return mdShell("md-pcfg","Configuracoes do Cartao Ponto","pcfgtt",
-    "<div class='fr2'><div class='fr'><label class='lbl'>Dia de inicio do periodo</label><input type='number' id='pc-ini' min='1' max='28' value='"+c.ini+"'/><div class='hint'>Ex: 20 = de 20/08 a 19/09. Use 1 para mes cheio.</div></div>"
-    +"<div class='fr'><label class='lbl'>Carga diaria seg a sex</label><input type='text' id='pc-carga' value='"+ptHH(c.carga)+"'/></div></div>"
-    +"<div class='fr2'><div class='fr'><label class='lbl'>Carga aos sabados</label><input type='text' id='pc-sab' value='"+ptHH(c.cargaSab)+"'/></div>"
-    +"<div class='fr'><label class='lbl'>Tolerancia horas extras (min/dia)</label><input type='number' id='pc-tole' min='0' value='"+c.tolE+"'/></div></div>"
-    +"<div class='fr2'><div class='fr'><label class='lbl'>Tolerancia faltas (min/dia)</label><input type='number' id='pc-tolf' min='0' value='"+c.tolF+"'/></div><div></div></div>"
-    +"<div class='fr'><label class='lbl'>Horario padrao geral (usado quando o colaborador nao tem padrao proprio)</label><div style='display:grid;grid-template-columns:repeat(3,1fr);gap:6px'>"
-    +PT_F.map(function(f,i){return "<div><div class='hint' style='margin:0 0 2px'>"+PT_FL[i]+"</div><input type='text' id='pc-"+f+"' value='"+esc(c.pad[i]||"")+"' placeholder='--:--'/></div>";}).join("")+"</div></div>"
-    +"<div class='fr'><label class='lbl'>Feriados extras (municipais, pontes) <span class='opt'>(um por linha, DD/MM/AAAA)</span></label>"
-    +"<textarea id='pc-fer' rows='3' style='width:100%;padding:.55rem .75rem;border:1.5px solid #dfe5ee;border-radius:8px;font-family:inherit;font-size:13px'>"+c.fer.map(fmtD).join("\n")+"</textarea>"
-    +"<div class='hint'>Feriados nacionais e Sexta-feira Santa ja sao considerados automaticamente (carga 0).</div></div>"
-    +"<div class='mdl-ft'><button class='btng' onclick=\"closeMd('md-pcfg')\">Cancelar</button><button class='btnp' onclick='ptSalvarCfg()'>Salvar</button></div>",520);
+// Configuracoes (aba "Padrao geral" para todos, aba "Por colaborador" com selecao de um ou varios)
+// PTC.ed guarda o que foi digitado, para nao perder ao trocar de aba ou de selecao
+var PTC={modo:"geral",sel:[],busca:"",ed:{}};
+function ptCfgModal(){return mdShell("md-pcfg","Configuracoes do Cartao Ponto","pcfgtt","<div id='pc-body'></div>",600);}
+function ptAbrirCfg(modo){
+  PTC={modo:modo||"geral",sel:PT.eid?[PT.eid]:[],busca:"",ed:{}};
+  ptCfgRender();openMd("md-pcfg");
 }
-function ptAbrirCfg(){openMd("md-pcfg");}
+function ptCfgModo(m){PTC.modo=m;ptCfgRender();}
+function pcV(id,def){return PTC.ed[id]!=null?PTC.ed[id]:def;}
+function pcIn(id,def,extra){return "<input type='text' id='"+id+"' value='"+esc(pcV(id,def))+"' oninput='PTC.ed[this.id]=this.value' "+(extra||"")+"/>";}
+function ptCfgRender(){
+  var b=document.getElementById("pc-body");if(!b)return;
+  var g=PTC.modo==="geral";
+  var h="<div class='pc-tabs'><button class='"+(g?"on":"")+"' onclick=\"ptCfgModo('geral')\"><i class='ti ti-world'></i>Padrao geral (todos)</button>"
+    +"<button class='"+(g?"":"on")+"' onclick=\"ptCfgModo('emp')\"><i class='ti ti-users'></i>Por colaborador</button></div>";
+  b.innerHTML=h+(g?ptCfgGeralHtml():ptCfgEmpHtml());
+  if(!g){ptCfgLista();ptCfgCampos();}
+}
+function ptCfgGeralHtml(){
+  var c=ptCfg();
+  return "<div class='fr2'><div class='fr'><label class='lbl'>Dia de inicio do periodo</label><input type='number' id='pc-ini' min='1' max='28' value='"+esc(pcV("pc-ini",c.ini))+"' oninput='PTC.ed[this.id]=this.value'/><div class='hint'>Ex: 20 = de 20/08 a 19/09. Use 1 para mes cheio.</div></div>"
+    +"<div class='fr'><label class='lbl'>Carga diaria seg a sex</label>"+pcIn("pc-carga",ptHH(c.carga))+"</div></div>"
+    +"<div class='fr2'><div class='fr'><label class='lbl'>Carga aos sabados</label>"+pcIn("pc-sab",ptHH(c.cargaSab))+"</div>"
+    +"<div class='fr'><label class='lbl'>Tolerancia horas extras (min/dia)</label><input type='number' id='pc-tole' min='0' value='"+esc(pcV("pc-tole",c.tolE))+"' oninput='PTC.ed[this.id]=this.value'/></div></div>"
+    +"<div class='fr2'><div class='fr'><label class='lbl'>Tolerancia faltas (min/dia)</label><input type='number' id='pc-tolf' min='0' value='"+esc(pcV("pc-tolf",c.tolF))+"' oninput='PTC.ed[this.id]=this.value'/></div><div></div></div>"
+    +"<div class='fr'><label class='lbl'>Horario padrao geral (usado quando o colaborador nao tem padrao proprio)</label><div style='display:grid;grid-template-columns:repeat(3,1fr);gap:6px'>"
+    +PT_F.map(function(f,i){return "<div><div class='hint' style='margin:0 0 2px'>"+PT_FL[i]+"</div>"+pcIn("pc-"+f,c.pad[i]||"","placeholder='--:--'")+"</div>";}).join("")+"</div></div>"
+    +"<div class='fr'><label class='lbl'>Feriados extras (municipais, pontes) <span class='opt'>(um por linha, DD/MM/AAAA)</span></label>"
+    +"<textarea id='pc-fer' rows='3' oninput='PTC.ed[this.id]=this.value' style='width:100%;padding:.55rem .75rem;border:1.5px solid #dfe5ee;border-radius:8px;font-family:inherit;font-size:13px'>"+esc(pcV("pc-fer",c.fer.map(fmtD).join("\n")))+"</textarea>"
+    +"<div class='hint'>Feriados nacionais e Sexta-feira Santa ja sao considerados automaticamente (carga 0). Colaboradores com configuracao propria mantem os valores deles (aba Por colaborador).</div></div>"
+    +"<div class='mdl-ft'><button class='btng' onclick=\"closeMd('md-pcfg')\">Cancelar</button><button class='btnp' onclick='ptSalvarCfg()'>Salvar</button></div>";
+}
+function ptCfgEmpHtml(){
+  return "<div class='pc-sel'><div class='pc-selhd'><input type='text' id='pc-busca' placeholder='Buscar colaborador ou funcao...' value='"+esc(PTC.busca)+"' oninput='PTC.busca=this.value;ptCfgLista()'/>"
+    +"<button class='btng' onclick='ptCfgMarcar(1)' title='Marcar todos os que aparecem na lista'><i class='ti ti-checks'></i> Marcar todos</button>"
+    +"<button class='btng' onclick='ptCfgMarcar(0)'><i class='ti ti-square'></i> Desmarcar</button></div>"
+    +"<div class='pc-lista' id='pc-lista'></div><div class='pc-cnt' id='pc-cnt'></div></div>"
+    +"<div id='pc-campos'></div>";
+}
+function ptCfgLista(){
+  var el=document.getElementById("pc-lista");if(!el)return;
+  var q=(PTC.busca||"").trim().toLowerCase();
+  var l=ptEmps(PT.per).filter(function(e){return !q||(e.nome+" "+(e.func||"")).toLowerCase().indexOf(q)>=0;});
+  el.innerHTML=l.length?l.map(function(e){
+    var on=PTC.sel.indexOf(e.id)>=0,c=ptCfg(e.id);
+    return "<label class='pc-it"+(on?" on":"")+"'><input type='checkbox' data-eid='"+e.id+"'"+(on?" checked":"")+" onchange='ptCfgTog(this)'/>"
+      +"<span class='nm'>"+esc(e.nome)+(e.func?" <span class='fn'>&middot; "+esc(e.func)+"</span>":"")+"</span>"
+      +(c.conf?"<span class='bdg pc-bconf'>CONFIANCA</span>":"")+(c.pers?"<span class='bdg bdg-clt'>PROPRIA</span>":"")+"</label>";
+  }).join(""):"<div class='hint' style='padding:.6rem .7rem;margin:0'>Nenhum colaborador encontrado.</div>";
+  ptCfgCnt();
+}
+function ptCfgCnt(){var el=document.getElementById("pc-cnt");if(el)el.textContent=PTC.sel.length?PTC.sel.length+" colaborador"+(PTC.sel.length>1?"es selecionados":" selecionado"):"Nenhum colaborador selecionado";}
+function ptCfgTog(cb){
+  var id=cb.dataset.eid,i=PTC.sel.indexOf(id);
+  if(cb.checked&&i<0)PTC.sel.push(id);else if(!cb.checked&&i>=0)PTC.sel.splice(i,1);
+  cb.parentNode.classList.toggle("on",cb.checked);
+  ptCfgCnt();ptCfgCampos();
+}
+function ptCfgMarcar(on){
+  if(on)Array.prototype.forEach.call(document.querySelectorAll("#pc-lista input[data-eid]"),function(cb){if(PTC.sel.indexOf(cb.dataset.eid)<0)PTC.sel.push(cb.dataset.eid);});
+  else PTC.sel=[];
+  ptCfgLista();ptCfgCampos();
+}
+// Valor de cada campo para os selecionados: {v:valor comum ou null, mix:true se os valores sao diferentes}
+function ptCfgComum(fn){
+  var vs=PTC.sel.map(fn),k=vs.map(function(v){return JSON.stringify(v==null?null:v);});
+  for(var i=1;i<k.length;i++)if(k[i]!==k[0])return {v:null,mix:true};
+  return {v:vs.length?vs[0]:null,mix:false};
+}
+function ptCfgCampos(){
+  var el=document.getElementById("pc-campos");if(!el)return;
+  if(!PTC.sel.length){el.innerHTML="<div class='warn'><i class='ti ti-info-circle'></i> Marque um ou mais colaboradores na lista acima para personalizar a configuracao deles.</div>"
+    +"<div class='mdl-ft'><button class='btng' onclick=\"closeMd('md-pcfg')\">Cancelar</button></div>";return;}
+  var g=ptCfg(),n=PTC.sel.length;
+  function ov(k){return ptCfgComum(function(eid){var o=ptCfgEmp(eid);return o&&o[k]!=null?o[k]:null;});}
+  var di=ov("ini"),cg=ov("carga"),sb=ov("cargaSab"),te=ov("tolE"),tf=ov("tolF");
+  var pd=ptCfgComum(function(eid){return ptPadEmp(eid);});
+  var cf=ptCfgComum(function(eid){var o=ptCfgEmp(eid);return !!(o&&o.conf);});
+  function campo(id,lbl,x,fmt,geral){
+    var ph=x.mix?"varia - vazio mantem":"padrao geral: "+geral;
+    return "<div class='fr'><label class='lbl'>"+lbl+"</label>"+pcIn(id,x.v!=null?fmt(x.v):"","placeholder='"+ph+"' data-mix='"+(x.mix?1:0)+"'")+"</div>";
+  }
+  var confV=pcV("pe-conf",cf.mix?"":(cf.v?"1":"0"));
+  var h="<div class='pc-conf'><i class='ti ti-shield-star' style='font-size:20px;color:#b7860b;margin-top:2px'></i><div style='flex:1'>"
+    +"<div class='t'>Cargo de confianca</div><div class='hint'>Gestores e cargos de confianca (art. 62, II da CLT) nao tem controle de jornada: o cartao continua registrando as batidas, mas nao gera horas extras nem faltas de horas.</div></div>"
+    +"<select id='pe-conf' onchange='PTC.ed[this.id]=this.value'>"+(cf.mix?"<option value=''"+(confV===""?" selected":"")+">Manter (varia)</option>":"")
+    +"<option value='0'"+(confV==="0"?" selected":"")+">Nao</option><option value='1'"+(confV==="1"?" selected":"")+">Sim</option></select></div>"
+    +"<div class='fr2'>"+campo("pe-ini","Dia de inicio do periodo",di,String,g.ini)+"<div class='hint' style='align-self:end;margin-bottom:.9rem'>Ex: 20 = de 20/08 a 19/09. Use 1 para mes cheio.</div></div>"
+    +"<div class='fr2'>"+campo("pe-carga","Carga diaria seg a sex",cg,ptHH,ptHH(g.carga))+campo("pe-sab","Carga aos sabados",sb,ptHH,ptHH(g.cargaSab))+"</div>"
+    +"<div class='fr2'>"+campo("pe-tole","Tolerancia horas extras (min/dia)",te,String,g.tolE)+campo("pe-tolf","Tolerancia faltas (min/dia)",tf,String,g.tolF)+"</div>"
+    +"<div class='fr'><label class='lbl'>Horario padrao do"+(n>1?"s colaboradores":" colaborador")+" <span class='opt'>("+(pd.mix?"varia entre os selecionados - vazio mantem o de cada um":"vazio = usa o horario padrao geral")+")</span></label>"
+    +"<div style='display:grid;grid-template-columns:repeat(3,1fr);gap:6px'>"
+    +PT_F.map(function(f,i){return "<div><div class='hint' style='margin:0 0 2px'>"+PT_FL[i]+"</div>"+pcIn("pe-"+f,pd.v?pd.v[i]||"":"","placeholder='"+(pd.mix?"varia":esc(g.pad[i]||"--:--"))+"'")+"</div>";}).join("")+"</div></div>"
+    +"<div class='hint'>Campos vazios usam o padrao geral. Feriados extras valem para todos (aba Padrao geral). A carga digitada direto no cartao de um mes continua tendo prioridade.</div>"
+    +"<div class='mdl-ft' style='justify-content:space-between'><button class='btng btn-ic' onclick='ptCfgEmpReset()' title='Apaga a configuracao propria e o horario padrao proprio dos selecionados'><i class='ti ti-restore'></i>Voltar ao padrao geral</button>"
+    +"<div style='display:flex;gap:8px'><button class='btng' onclick=\"closeMd('md-pcfg')\">Cancelar</button><button class='btnp' onclick='ptSalvarCfgEmp()'>Salvar para "+n+" colaborador"+(n>1?"es":"")+"</button></div></div>";
+  el.innerHTML=h;
+}
+function ptSalvarCfgEmp(){
+  var sel=PTC.sel.slice();if(!sel.length){alert("Selecione ao menos um colaborador.");return;}
+  // cada campo: {acao:"manter"|"limpar"|"definir", v}
+  function lerH(id,nome){
+    var el=document.getElementById(id),t=el.value.trim();
+    if(t==="")return {acao:el.dataset.mix==="1"?"manter":"limpar"};
+    var m=ptParse(t);if(m===null||isNaN(m)){alert(nome+" invalida. Use H:MM, ex: 8:48");return null;}
+    return {acao:"definir",v:m};
+  }
+  function lerN(id,nome){
+    var el=document.getElementById(id),t=el.value.trim();
+    if(t==="")return {acao:el.dataset.mix==="1"?"manter":"limpar"};
+    var m=parseInt(t,10);if(isNaN(m)||m<0||!/^\d+$/.test(t)){alert(nome+" invalido(a). Informe um numero inteiro.");return null;}
+    return {acao:"definir",v:m};
+  }
+  var F={ini:lerN("pe-ini","Dia de inicio do periodo")};if(!F.ini)return;
+  if(F.ini.acao==="definir"&&!(F.ini.v>=1&&F.ini.v<=28)){alert("Dia de inicio deve ser de 1 a 28.");return;}
+  F.carga=lerH("pe-carga","Carga diaria");if(!F.carga)return;
+  F.cargaSab=lerH("pe-sab","Carga aos sabados");if(!F.cargaSab)return;
+  F.tolE=lerN("pe-tole","Tolerancia de horas extras");if(!F.tolE)return;
+  F.tolF=lerN("pe-tolf","Tolerancia de faltas");if(!F.tolF)return;
+  var pad=[],vazio=true;
+  for(var i=0;i<PT_F.length;i++){var m=ptParse(gv("pe-"+PT_F[i]));if(isNaN(m)){alert("Horario padrao invalido em "+PT_FL[i]+".");return;}pad.push(m===null?"":ptHH(m));if(m!==null)vazio=false;}
+  var padMix=ptCfgComum(function(eid){return ptPadEmp(eid);}).mix;
+  var padA=vazio?(padMix?"manter":"limpar"):"definir";
+  var conf=gv("pe-conf");
+  if(sel.length>1&&!confirm("Aplicar esta configuracao a "+sel.length+" colaboradores?"))return;
+  sel.forEach(function(eid){
+    var o=ptCfgEmp(eid)||{id:"_cfgE|"+eid,eid:eid};
+    PT_CK.forEach(function(k){if(F[k].acao==="definir")o[k]=F[k].v;else if(F[k].acao==="limpar")delete o[k];});
+    if(conf==="1")o.conf=1;else if(conf==="0")delete o.conf;
+    DB.ponto=DB.ponto.filter(function(x){return x.id!==o.id;});
+    if(PT_CK.some(function(k){return o[k]!=null;})||o.conf)DB.ponto.push(o);
+    if(padA!=="manter"){
+      DB.ponto=DB.ponto.filter(function(x){return x.id!=="_pad|"+eid;});
+      if(padA==="definir")DB.ponto.push({id:"_pad|"+eid,eid:eid,pad:pad.slice()});
+    }
+  });
+  dbSave();closeMd("md-pcfg");rPonto();
+}
+function ptCfgEmpReset(){
+  var sel=PTC.sel.slice();if(!sel.length)return;
+  if(!confirm("Voltar "+(sel.length>1?"os "+sel.length+" colaboradores selecionados":"este colaborador")+" ao padrao geral?\nApaga carga, tolerancias, horario padrao proprio e cargo de confianca. Os horarios ja lancados no cartao nao sao alterados."))return;
+  DB.ponto=DB.ponto.filter(function(x){return sel.every(function(eid){return x.id!=="_cfgE|"+eid&&x.id!=="_pad|"+eid;});});
+  dbSave();closeMd("md-pcfg");rPonto();
+}
 function ptSalvarCfg(){
   var ini=parseInt(gv("pc-ini"),10),carga=ptParse(gv("pc-carga")),sab=ptParse(gv("pc-sab"))||0,tolE=parseInt(gv("pc-tole"),10),tolF=parseInt(gv("pc-tolf"),10);
   if(!(ini>=1&&ini<=28)){alert("Dia de inicio deve ser de 1 a 28.");return;}
@@ -5621,7 +5786,7 @@ function rRPonto(){
   var empIds={};DB.ponto.forEach(function(c){if(c.eid&&c.dias)empIds[c.eid]=1;});
   var empOpts=DB.emp.filter(function(e){return empIds[e.id];}).sort(function(a,b){return a.nome.localeCompare(b.nome);});
   var selSt="padding:.4rem .7rem;border:1.5px solid var(--line);border-radius:8px;font-size:13px;color:"+B+";font-weight:700;background:#fff;width:auto";
-  var perLb=mes?ptPerLb(ano+"-"+mes):"Ano "+ano;
+  var perLb=mes?ptPerLb(ano+"-"+mes,eid):"Ano "+ano;
   var rows=L.length===0?"<div class='empty'><i class='ti ti-clock-off'></i>Nenhum cartao ponto lancado para o filtro.</div>":
     "<div class='etab-wrap'><table class='etab' style='min-width:1150px'><thead><tr>"
     +["PERÍODO","COLABORADOR","FUNÇÃO","DIAS TRAB.","TRABALHADO","CARGA","HORAS EXTRAS","HORAS FALTAS","ABONOS","SALDO ANTERIOR","SALDO DO MÊS","SALDO ACUMULADO",""].map(function(h,i){return "<th class='"+(i>2?"c":"")+"' style='cursor:default'>"+h+"</th>";}).join("")
@@ -5660,7 +5825,7 @@ function ptRelPDF(){
   var pa=ptPerAtual(),ano=gv("rp-ano")||pa.slice(0,4),mes=gv("rp-mes"),eid=gv("rp-emp"),det=document.getElementById("rp-det").checked;
   var L=ptLinhasRel(ano,mes,eid);if(!L.length)return;
   var empSel=eid?DB.emp.find(function(e){return e.id===eid;}):null;
-  var K=mkPdfKit("Relatório de Ponto",(mes?ptPerLb(ano+"-"+mes):"Ano "+ano)+(empSel?"  |  "+empSel.nome:"  |  Todos os colaboradores")),doc=K.doc,C=K.C,cw=K.cw;
+  var K=mkPdfKit("Relatório de Ponto",(mes?ptPerLb(ano+"-"+mes,eid):"Ano "+ano)+(empSel?"  |  "+empSel.nome:"  |  Todos os colaboradores")),doc=K.doc,C=K.C,cw=K.cw;
   var y=K.header();
   var T={tot:0,cg:0,ext:0,fal:0,mes:0};L.forEach(function(x){["tot","cg","ext","fal","mes"].forEach(function(k){T[k]+=x.s[k];});});
   var ks=[["Cartões",String(L.length),"",C.b],["Horas trabalhadas",ptHM(T.tot),"carga "+ptHM(T.cg),C.bl],["Horas extras",ptHM(T.ext),ptDec(T.ext)+" h",C.grn],

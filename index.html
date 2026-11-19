@@ -472,6 +472,8 @@ input:focus-visible,select:focus-visible{outline:none}
 .pt-tab .pt-ab{min-width:58px}
 .etab.pt-tab tr.pt-fds td{background:#e3e5e8!important}
 .etab.pt-tab tr.pt-fer td{background:#f6dede!important}
+.etab.pt-tab tr.pt-totr td{background:#2b3440!important;color:#fff;font-weight:800;font-size:12.5px;padding:.55rem .45rem}
+.etab.pt-tab tr.pt-totr td:first-child{text-align:right;letter-spacing:.04em}
 .ro-mode #p-ponto .pt-in,.ro-mode #p-ponto #pt-ant{pointer-events:none}
 .ro-mode #p-ponto .pt-act{display:none!important}
 @media (max-width:900px){#main{padding:1rem}}
@@ -5395,7 +5397,9 @@ function rPonto(){
     +"<div class='card'>"+info
     +"<div class='etab-wrap' style='max-height:none'><table class='etab pt-tab'><thead><tr>"
     +th("Data")+th("Dia da Semana")+PT_FL.map(th).join("")+th("Total Trabalhado no Dia")+th("Carga Horaria")+th("Dif. (Trab. - Padrao)")+th("Horas Extras Diarias")+th("Horas Faltas Diarias")+th("Abonado?")+th("Observacao")
-    +"</tr></thead><tbody>"+rows+"</tbody></table></div>"
+    +"</tr></thead><tbody>"+rows+"</tbody>"
+    +"<tfoot><tr class='pt-totr'><td class='c' colspan='"+(2+PT_FL.length)+"'>TOTAL DO PERIODO</td>"
+    +"<td class='r' id='pt-tt'></td><td class='c' id='pt-tcg'></td><td class='r' id='pt-tdif'></td><td></td><td></td><td></td><td></td></tr></tfoot></table></div>"
     +"<div class='hint' style='margin-top:.6rem'>Digite os horarios como 0451 ou 4:51 (Enter/setas descem na coluna). Total = soma dos pares de batidas em ordem (Entrada 1 &rarr; proxima saida...). "
     +(ce.conf?"Cargo de confianca: horas extras e faltas de horas nao sao calculadas (ajuste em Configuracoes &rarr; Por colaborador). ":"Horas extras contam acima de "+ce.tolE+" min/dia e faltas acima de "+ce.tolF+" min/dia (ajuste em Configuracoes). ")+" Abonado = Sim zera a falta do dia. <i class='ti ti-alert-circle' style='color:"+RED+"'></i> = existe lancamento de falta/atraso na tela Lancamentos.</div></div>"
     +ptCfgModal();
@@ -5417,6 +5421,9 @@ function ptAtualizar(){
     var f=document.getElementById("pt-f"+k);if(f){f.style.color=r.fal?RED:"";f.style.fontWeight=r.fal?"800":"";}
     var x=document.getElementById("pt-x"+k);if(x){x.style.color=r.ext?GRN:"";x.style.fontWeight=r.ext?"800":"";}
   });
+  var tdf=0;s.dias.forEach(function(r){if(!(r.fut&&!r.tem))tdf+=r.dif;});
+  st("pt-tt",ptHM(s.tot));st("pt-tcg",ptHM(s.cg));st("pt-tdif",ptHM(tdf));
+  var tde=document.getElementById("pt-tdif");if(tde)tde.style.color=tdf<0?"#ff8a80":tdf>0?"#7ee2a8":"";
   st("pt-s-antd",ptDec(s.ant));st("pt-s-ext",ptHM(s.ext));st("pt-s-extd",ptDec(s.ext));
   st("pt-s-fal",ptHM(s.fal));st("pt-s-fald",ptDec(s.fal));st("pt-s-mes",ptHM(s.mes));st("pt-s-mesd",ptDec(s.mes));
   st("pt-s-acum",ptHM(s.acum));st("pt-s-acumd",ptDec(s.acum));

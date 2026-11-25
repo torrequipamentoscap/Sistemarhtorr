@@ -551,6 +551,34 @@ input:focus-visible,select:focus-visible{outline:none}
 .pa-lst .erow{padding:.55rem .35rem;border-radius:6px}
 .pa-lst .erow:hover{background:#f6f8fb}
 .ro-mode .pa-ed{display:none!important}
+/* ===== Menu fixo / movel e cabecalho fixo das telas ===== */
+#app{height:100vh;height:100dvh;min-height:0;overflow:hidden}
+#sb{height:100%;overflow:hidden}
+#sb nav{min-height:0;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.22) transparent}
+#sb nav::-webkit-scrollbar{width:6px}
+#sb nav::-webkit-scrollbar-thumb{background:rgba(255,255,255,.22);border-radius:6px}
+#main{height:100%;overflow-y:auto;overscroll-behavior:contain;padding-top:0}
+.pg-hd{position:sticky;top:0;z-index:60;background:#f1f4f8;margin:0 -1.5rem 1.25rem;padding:1.25rem 1.5rem .85rem;transition:box-shadow .15s}
+.pg-hd.stuck{box-shadow:0 8px 16px -12px rgba(20,22,24,.45);border-bottom:1px solid var(--line)}
+#sb-mob,#sb-ov{display:none}
+@media (max-width:900px){
+  .pg-hd{margin:0 -1rem 1rem;padding:.85rem 1rem .75rem 3.75rem;gap:8px}
+  .pg-hd .h1{font-size:19px}
+  .pg-hd .btng,.pg-hd .btnp{padding:.45rem .8rem;font-size:12.5px}
+  #sb{position:fixed;left:0;top:0;bottom:0;z-index:8600;width:260px!important;transform:translateX(-105%);transition:transform .22s ease;box-shadow:none}
+  #sb.mob-open{transform:none;box-shadow:8px 0 30px rgba(0,0,0,.35)}
+  #sb .sb-tog{display:none}
+  #sb-ov.on{display:block;position:fixed;inset:0;background:rgba(20,22,24,.45);z-index:8590}
+  #sb-mob{display:flex;position:fixed;top:12px;left:12px;z-index:8580;width:40px;height:40px;border-radius:10px;border:none;background:var(--deep);color:#fff;align-items:center;justify-content:center;font-size:21px;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+}
+.pa-nav{flex-basis:100%;display:flex;flex-wrap:wrap;gap:4px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:4px;margin-top:.2rem;width:max-content;max-width:100%}
+.pa-nav-b{display:inline-flex;align-items:center;gap:7px;background:transparent;border:none;border-radius:7px;padding:.45rem .95rem;font-size:13px;font-weight:600;color:#5a6168;white-space:nowrap}
+.pa-nav-b i{font-size:16px}
+.pa-nav-b:hover{background:#f1f3f5;color:var(--deep)}
+.pa-nav-b.on{background:var(--deep);color:#fff;cursor:default}
+.pa-nav-b .ct{background:#e6e9ec;color:var(--deep);border-radius:10px;padding:0 7px;font-size:11px;font-weight:800;line-height:18px}
+.pa-nav-b.on .ct{background:rgba(255,255,255,.18);color:#fff}
+@media (max-width:900px){.pa-nav{flex-wrap:nowrap;overflow-x:auto;width:100%;scrollbar-width:none}.pa-nav::-webkit-scrollbar{display:none}.pa-nav-b{padding:.35rem .7rem;font-size:12px}}
 </style>
 </head>
 <body>
@@ -642,6 +670,8 @@ input:focus-visible,select:focus-visible{outline:none}
       </button>
     </div>
   </div>
+  <button id="sb-mob" onclick="sbMob(true)" aria-label="Abrir menu"><i class="ti ti-menu-2"></i></button>
+  <div id="sb-ov" onclick="sbMob(false)"></div>
   <div id="main">
     <div id="p-dashboard" class="page active"></div>
     <div id="p-centros" class="page"></div>
@@ -784,7 +814,7 @@ function _resetInat(){
   },MINUTOS_INATIVIDADE*60*1000);
 }
 ["click","keydown","mousemove","touchstart","scroll"].forEach(function(ev){
-  document.addEventListener(ev,_resetInat,{passive:true});
+  document.addEventListener(ev,_resetInat,{passive:true,capture:true});
 });
 
 // Carrega os dados e abre o sistema
@@ -1157,6 +1187,8 @@ var sbOpen=true,pg="dashboard",CH={};
 function killCH(){Object.values(CH).forEach(function(c){try{c.destroy();}catch(e){}});CH={};}
 function go(p){
   if(ACESSO&&permTela(p)==="nenhum"){showSync("Voce nao tem acesso a esta tela.",false,true);return;}
+  sbMob(false);
+  if(p!==pg){var _mn=document.getElementById("main");if(_mn)_mn.scrollTop=0;}
   killCH();
   if(typeof closeModal==="function")closeModal();
   if(typeof closeDemModal==="function")closeDemModal();
@@ -1172,6 +1204,21 @@ function go(p){
   document.getElementById("main").classList.toggle("ro-mode",!!ACESSO&&permTela(p)==="ver");
   ({dashboard:rDash,centros:rCC,employees:function(){empCtx='cad';rEmp();},reajustes:rReaj,grupos:rGrupos,direcionar:rDir,resumo:function(){empCtx='res';rResumo();},folha:rFolha,monitor:rMon,"5s":r5S,lancamento:rLanc,premios:rPrem,indices:rIdx,motivos:rMotivos,relatorio:rRel,calendario:rCal,ponto:rPonto,rponto:rRPonto,backup:function(){BKP_LISTA=null;rBkp();},acessos:function(){ACS_LISTA=null;rAcessos();},plano:function(){rPlano("lanc");},planoconc:function(){rPlano("conc");},planodash:rPlanoDash,planopess:rPlanoPess})[p]();
 }
+// Menu lateral no celular (abre por cima da tela)
+function sbMob(on){
+  var sb=document.getElementById("sb"),ov=document.getElementById("sb-ov");if(!sb||!ov)return;
+  if(on&&!sbOpen)toggleSB();
+  sb.classList.toggle("mob-open",!!on);ov.classList.toggle("on",!!on);
+}
+// Sombra no cabecalho fixo quando a tela esta rolada
+(function(){
+  function liga(){
+    var mn=document.getElementById("main");if(!mn)return;
+    mn.addEventListener("scroll",function(){var h=mn.querySelector(".page.active .pg-hd");if(h)h.classList.toggle("stuck",mn.scrollTop>4);},{passive:true});
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",liga);else liga();
+})();
+document.addEventListener("keydown",function(e){if(e.key==="Escape"){var sb=document.getElementById("sb");if(sb&&sb.classList.contains("mob-open"))sbMob(false);}});
 function toggleSB(){
   sbOpen=!sbOpen;
   document.getElementById("sb").classList.toggle("col",!sbOpen);
@@ -1290,9 +1337,9 @@ function rDash(){
 
   document.getElementById("p-dashboard").innerHTML=
     // HEADER + FILTERS
-    "<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;flex-wrap:wrap;gap:8px'>"
-    +"<div><h1 style='font-size:22px;font-weight:800;color:"+B+"'>Dashboard</h1>"
-    +"<div style='font-size:13px;color:#888'>Visao geral dos premios</div></div>"
+    "<div class='pg-hd'>"
+    +"<div><h1 class='h1'>Dashboard</h1>"
+    +"<div class='sub'>Visao geral dos premios</div></div>"
     +"<div style='display:flex;align-items:center;gap:8px;flex-wrap:wrap'>"
     +"<input type='hidden' id='dash-modo' value='"+modo+"'/>"
     +"<div style='display:flex;align-items:center;gap:2px;background:#fff;border:1.5px solid #dfe5ee;border-radius:8px;padding:3px'>"
@@ -3484,8 +3531,8 @@ function rMotivos(){
   var filMot=DB.motivos.filter(function(m){return m.tipo===selTipo;});
 
   document.getElementById("p-motivos").innerHTML=
-    "<h1 style='font-size:22px;font-weight:800;color:"+B+";margin-bottom:.25rem'>Motivos de Ocorrencias</h1>"
-    +"<div style='font-size:13px;color:#888;margin-bottom:1.5rem'>Cadastre os motivos para Faltas, Atrasos, Desligamentos e os criterios do 5S</div>"
+    "<div class='pg-hd'><div><h1 class='h1'>Motivos de Ocorrencias</h1>"
+    +"<div class='sub'>Cadastre os motivos para Faltas, Atrasos, Desligamentos e os criterios do 5S</div></div></div>"
     +"<div style='display:grid;grid-template-columns:1fr 1.4fr;gap:1.5rem;align-items:start'>"
 
     // ── FORM MOTIVOS ──
@@ -3926,9 +3973,9 @@ function rPrem(){
       +"</tr>";
   }).join("");
   document.getElementById("p-premios").innerHTML=
-    "<div style='margin-bottom:1.5rem'>"
-    +"<h1 style='font-size:22px;font-weight:800;color:"+B+"'>Premios - Cartao Beneficio</h1>"
-    +"<div style='font-size:13px;color:#888;margin-bottom:1rem'>Defina o valor e veja os descontos</div>"
+    "<div class='pg-hd'><div><h1 class='h1'>Premios - Cartao Beneficio</h1>"
+    +"<div class='sub'>Defina o valor e veja os descontos</div></div></div>"
+    +"<div style='margin-bottom:1.5rem'>"
     +"<div style='background:#eceef0;border:1.5px solid #d3d7db;border-radius:10px;padding:.875rem 1.25rem;margin-bottom:1rem;display:flex;align-items:center;gap:12px;flex-wrap:wrap'>"
     +"<i class='ti ti-gift' style='font-size:20px;color:"+B+"'></i>"
     +"<div><div style='font-size:13px;font-weight:700;color:"+B+"'>Definir valor para todos</div>"
@@ -6192,6 +6239,15 @@ function paQuemHtml(a){
   var l=paQuem(a);if(!l.length)return "<span style='color:#b0b8c1'>—</span>";
   return "<div class='pa-quem'>"+l.map(function(p){return "<span class='pa-pes' title='"+esc(p.nome)+"'><span class='av'>"+esc(paIni(p.nome))+"</span>"+esc(p.nome.split(" ")[0])+"</span>";}).join("")+"</div>";
 }
+// Abas de navegacao entre as telas do Plano de Acao (respeita as permissoes)
+function paNav(atual){
+  var ab=(DB.plano||[]).filter(paAberta).length,fi=(DB.plano||[]).length-ab,np=(DB.planopess||[]).length;
+  var T=[["plano","ti-list-check","Lançamentos",ab],["planoconc","ti-circle-check","Concluídas",fi],["planodash","ti-chart-donut","Dashboard",null],["planopess","ti-users-group","Pessoas",np]];
+  return "<nav class='pa-nav' aria-label='Telas do Plano de Ação'>"+T.filter(function(t){return !ACESSO||permTela(t[0])!=="nenhum";}).map(function(t){
+    var on=t[0]===atual;
+    return "<button class='pa-nav-b"+(on?" on":"")+"'"+(on?" aria-current='page'":" onclick=\"go('"+t[0]+"')\"")+"><i class='ti "+t[1]+"'></i>"+t[2]+(t[3]!=null?"<span class='ct'>"+t[3]+"</span>":"")+"</button>";
+  }).join("")+"</nav>";
+}
 function paPode(){return !ACESSO||permTela(pg)==="editar";}
 function paMd(id,titulo,body,w){
   paMdFechar(id);
@@ -6291,7 +6347,7 @@ function rPlano(ctx){
     +"<div style='display:flex;gap:8px;flex-wrap:wrap'>"
     +"<button class='btng btn-ic' onclick=\"paPDFModal('"+ctx+"')\"><i class='ti ti-printer'></i>Imprimir PDF</button>"
     +(ctx==="lanc"?"<button class='btnp btn-ic' onclick='paForm()'><i class='ti ti-plus'></i>Nova ação</button>":"")
-    +"</div></div>"
+    +"</div>"+paNav(ctx==="lanc"?"plano":"planoconc")+"</div>"
     +paInfoHtml()
     +"<div class='pa-chips'>"+chips+"</div>"
     +"<div class='pa-fil'>"
@@ -6482,7 +6538,7 @@ function rPlanoPess(){
       +"<button class='ibdel pa-ed' title='Excluir' onclick=\"paPesExcluir('"+p.id+"')\"><i class='ti ti-trash'></i></button></td></tr>";
   }).join("");
   el.innerHTML="<div class='pg-hd'><div><h1 class='h1'>Pessoas Envolvidas</h1><div class='sub'>Responsáveis e apoio das ações do plano (QUEM?)</div></div>"
-    +"<button class='btnp btn-ic' onclick='paPesForm()'><i class='ti ti-user-plus'></i>Nova pessoa</button></div>"
+    +"<button class='btnp btn-ic' onclick='paPesForm()'><i class='ti ti-user-plus'></i>Nova pessoa</button>"+paNav("planopess")+"</div>"
     +"<div class='ga' style='margin-bottom:1rem'>"
     +sCard("Pessoas cadastradas",L.length,B,"ti-users-group")
     +sCard("Ativas",at,GRN,"ti-user-check")
@@ -6627,7 +6683,7 @@ function rPlanoDash(){
     +"<div style='display:flex;gap:8px;flex-wrap:wrap;align-items:center'>"
     +"<div class='mes-box'><span>Quem:</span><select onchange='PA_DF.quem=this.value;rPlanoDash()'><option value=''>Todos</option>"+pess.map(function(p){return "<option value='"+p.id+"'"+(PA_DF.quem===p.id?" selected":"")+">"+esc(p.nome)+"</option>";}).join("")+"</select></div>"
     +"<div class='mes-box'><span>Onde:</span><select onchange='PA_DF.onde=this.value;rPlanoDash()'><option value=''>Todos</option>"+setores.map(function(s){return "<option value='"+esc(s)+"'"+(PA_DF.onde===s?" selected":"")+">"+esc(s)+"</option>";}).join("")+"</select></div>"
-    +"<button class='btnp btn-ic' onclick='paDashPDF()'><i class='ti ti-printer'></i>Imprimir PDF</button></div></div>"
+    +"<button class='btnp btn-ic' onclick='paDashPDF()'><i class='ti ti-printer'></i>Imprimir PDF</button></div>"+paNav("planodash")+"</div>"
     +paInfoHtml().replace(/<button class='pa-ed[^]*?<\/button>/,"")
     +(S.tot?"<div class='ga' style='margin-bottom:1rem'>"
       +sCard("Total de ações",S.tot,B,"ti-list-check")

@@ -77,7 +77,7 @@ var _db = {
 };
 
 // Cada tabela em uma linha separada
-var COLECOES = ["emp","oc","pr","idx","cc","oc5","motivos","sensos","motdem","motafas","reaj","grupos","receita","folhafech","ponto"];
+var COLECOES = ["emp","oc","pr","idx","cc","oc5","motivos","sensos","motdem","motafas","reaj","grupos","receita","folhafech","ponto","plano","planopess","planocfg"];
 
 window._fbLoad = function(){
   return _sb.from(TABELA).select("id,conteudo").in("id", COLECOES).then(function(r){
@@ -102,6 +102,13 @@ window._fbLoad = function(){
       window.DB.motafas = window.initMotAfas();
     }
     ["sensos","motdem","grupos","motafas"].forEach(function(c){ if(!_antes[c] && (window.DB[c]||[]).length) window._seeded[c] = true; });
+    // Plano de Acao 5W2H: primeira carga importa as acoes da planilha
+    if(window.initPlano && !(window.DB.plano||[]).length && !(window.DB.planopess||[]).length && !(window.DB.planocfg||[]).length){
+      var _pa = window.initPlano();
+      window.DB.plano = _pa.plano; window.DB.planopess = _pa.pess; window.DB.planocfg = _pa.cfg;
+      ["plano","planopess","planocfg"].forEach(function(c){ window._seeded[c] = true; });
+      window._paSeedTry = false;
+    }
     window._dbLoaded = true;
   });
 };
@@ -492,6 +499,58 @@ input:focus-visible,select:focus-visible{outline:none}
 #lgw::after{background:linear-gradient(90deg,var(--deep),var(--blue))}
 .h1,.mdl-tt{color:var(--ink)}
 .nb.on{background:rgba(255,255,255,.10)}
+/* ===== Plano de Acao 5W2H ===== */
+.pa-info{display:grid;grid-template-columns:repeat(4,minmax(130px,.8fr)) 2.4fr;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:#fff;margin-bottom:1rem;box-shadow:0 2px 8px rgba(0,0,0,.05)}
+.pa-info>div{padding:.65rem .9rem;border-right:1px solid var(--line);min-width:0}
+.pa-info>div:first-child{box-shadow:inset 3px 0 0 var(--blue)}
+.pa-info>div:last-child{border-right:none}
+.pa-info span{display:block;font-size:10px;font-weight:800;color:#8a94a0;letter-spacing:.5px;text-transform:uppercase;margin-bottom:3px}
+.pa-info b{font-size:14px;color:var(--deep);font-weight:800}
+.pa-info .obj b{font-weight:600;font-size:12.5px;color:#444;line-height:1.4;display:block}
+.pa-info .lnk-add{letter-spacing:0}
+@media (max-width:1000px){.pa-info{grid-template-columns:1fr 1fr}.pa-info>div{border-bottom:1px solid var(--line)}.pa-info .obj{grid-column:1/-1}}
+.pa-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:.8rem}
+.pa-chip{display:flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--line);border-radius:9px;padding:.42rem .8rem;font-size:12.5px;font-weight:600;color:#444}
+.pa-chip:hover{border-color:var(--blue)}
+.pa-chip b{font-size:16px;font-weight:800}
+.pa-chip.on{border-color:var(--deep);background:#f2f3f5;box-shadow:0 0 0 2px rgba(58,64,70,.12)}
+.pa-fil{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:.75rem}
+.pa-fil select{width:auto;min-width:160px}
+.pa-fil input[type=text]{flex:1;min-width:240px;width:auto}
+.pa-tab td{vertical-align:top}
+.pa-tab td.tx{white-space:normal;min-width:165px;max-width:270px;line-height:1.38}
+.pa-tab td.ob{white-space:normal;min-width:150px;max-width:240px;color:#555;font-size:11.5px;line-height:1.38}
+.pa-st{display:inline-flex;align-items:center;gap:4px;border-radius:6px;padding:2px 8px;font-size:10.5px;font-weight:800;white-space:nowrap}
+.pa-st i{font-size:13px}
+.pa-atr{display:block;font-size:10px;color:#c0392b;font-weight:700;margin-top:3px;white-space:nowrap}
+.pa-pct{display:flex;align-items:center;gap:6px;min-width:90px;padding-top:3px}
+.pa-pct .bar{flex:1;height:6px;background:#eceff2;border-radius:4px;overflow:hidden}
+.pa-pct .bar i{display:block;height:100%;border-radius:4px}
+.pa-pct b{font-size:11px;min-width:32px;text-align:right}
+.pa-quem{display:flex;flex-wrap:wrap;gap:3px;max-width:180px}
+.pa-pes{display:inline-flex;align-items:center;gap:5px;background:#eceef0;color:var(--deep);border-radius:12px;padding:1px 9px 1px 2px;font-size:11px;font-weight:700;white-space:nowrap}
+.pa-pes .av{width:19px;height:19px;border-radius:50%;background:var(--deep);color:#fff;font-size:8.5px;display:inline-flex;align-items:center;justify-content:center;font-weight:800;letter-spacing:.2px}
+.pa-ta{width:100%;padding:.55rem .75rem;border:1.5px solid #dfe5ee;border-radius:8px;font-size:13px;outline:none;background:#fff;color:#222;font-family:inherit;resize:vertical;line-height:1.4}
+.pa-ta:focus{border-color:#6b737b;box-shadow:0 0 0 3px rgba(90,97,104,.18)}
+.pa-ta::placeholder{color:#a6afbb}
+.pa-w{display:inline-flex;align-items:center;background:var(--deep);color:#fff;border-radius:4px;font-size:9px;font-weight:800;padding:1px 5px;margin-right:6px;letter-spacing:.4px;vertical-align:1px}
+.pa-pick{display:flex;flex-wrap:wrap;gap:6px;border:1.5px solid var(--line);border-radius:8px;padding:.5rem;max-height:140px;overflow:auto;background:#fafbfc}
+.pa-pick label{display:inline-flex;align-items:center;gap:5px;border:1.5px solid var(--line);border-radius:20px;padding:.28rem .75rem;font-size:12.5px;cursor:pointer;background:#fff;color:#444;user-select:none}
+.pa-pick label:hover{border-color:var(--blue)}
+.pa-pick label:has(input:checked){border-color:var(--deep);background:var(--deep);color:#fff;font-weight:700}
+.pa-pick input{display:none}
+.pa-seg .seg-b{font-size:11.5px}
+.pa-seg #pa-st-and.on{background:#1f5fa8}.pa-seg #pa-st-conc.on{background:#1a7a4a}.pa-seg #pa-st-canc.on{background:#7b3fa0}.pa-seg #pa-st-nao.on{background:#6b7580}
+.pa-prog{display:flex;height:16px;border-radius:8px;overflow:hidden;background:#eceff2}
+.pa-prog>div{height:100%;transition:width .3s}
+.pa-leg{display:flex;flex-wrap:wrap;gap:14px;margin-top:9px;font-size:12px;color:#555;font-weight:600}
+.pa-leg span{display:inline-flex;align-items:center;gap:6px}
+.pa-leg i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.pa-g2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+@media (max-width:1000px){.pa-g2{grid-template-columns:1fr}}
+.pa-lst .erow{padding:.55rem .35rem;border-radius:6px}
+.pa-lst .erow:hover{background:#f6f8fb}
+.ro-mode .pa-ed{display:none!important}
 </style>
 </head>
 <body>
@@ -565,6 +624,12 @@ input:focus-visible,select:focus-visible{outline:none}
       <button class="nb" id="nb-rponto" onclick="go('rponto')"><i class="ti ti-report" style="font-size:18px;flex-shrink:0"></i><span class="nl">Relatorio de Ponto</span></button>
       <button class="nb" id="nb-calendario" onclick="go('calendario')"><i class="ti ti-calendar-heart" style="font-size:18px;flex-shrink:0"></i><span class="nl">Aniversarios</span></button>
       </div>
+      <div class="nb-grp"><div class="nb-sec">Plano de Ação</div>
+      <button class="nb" id="nb-plano" onclick="go('plano')"><i class="ti ti-list-check" style="font-size:18px;flex-shrink:0"></i><span class="nl">Lançamentos 5W2H</span></button>
+      <button class="nb" id="nb-planoconc" onclick="go('planoconc')"><i class="ti ti-circle-check" style="font-size:18px;flex-shrink:0"></i><span class="nl">Ações Concluídas</span></button>
+      <button class="nb" id="nb-planodash" onclick="go('planodash')"><i class="ti ti-chart-donut" style="font-size:18px;flex-shrink:0"></i><span class="nl">Dashboard do Plano</span></button>
+      <button class="nb" id="nb-planopess" onclick="go('planopess')"><i class="ti ti-users-group" style="font-size:18px;flex-shrink:0"></i><span class="nl">Pessoas Envolvidas</span></button>
+      </div>
       <div class="nb-grp"><div class="nb-sec">Sistema</div>
       <button class="nb" id="nb-acessos" onclick="go('acessos')" style="display:none"><i class="ti ti-shield-lock" style="font-size:18px;flex-shrink:0"></i><span class="nl">Permissoes de Usuarios</span></button>
       <button class="nb" id="nb-backup" onclick="go('backup')"><i class="ti ti-database" style="font-size:18px;flex-shrink:0"></i><span class="nl">Backup</span></button>
@@ -598,6 +663,10 @@ input:focus-visible,select:focus-visible{outline:none}
     <div id="p-rponto" class="page"></div>
     <div id="p-backup" class="page"></div>
     <div id="p-acessos" class="page"></div>
+    <div id="p-plano" class="page"></div>
+    <div id="p-planoconc" class="page"></div>
+    <div id="p-planodash" class="page"></div>
+    <div id="p-planopess" class="page"></div>
   </div>
 </div>
 
@@ -610,7 +679,7 @@ input:focus-visible,select:focus-visible{outline:none}
 // ═══════════════════════════════════════
 // DB GLOBAL
 // ═══════════════════════════════════════
-var DB={emp:[],oc:[],pr:[],idx:[],cc:[],oc5:[],motivos:[],sensos:[],motdem:[],motafas:[],reaj:[],grupos:[],receita:[],folhafech:[],ponto:[]};
+var DB={emp:[],oc:[],pr:[],idx:[],cc:[],oc5:[],motivos:[],sensos:[],motdem:[],motafas:[],reaj:[],grupos:[],receita:[],folhafech:[],ponto:[],plano:[],planopess:[],planocfg:[]};
 var SAVE_TIMER=null;
 
 function dbLoad(){
@@ -751,8 +820,8 @@ function doLogout(){
   BKP_LISTA=null;
   try{sessionStorage.clear();}catch(e){}
   // apaga calculos guardados dos relatorios (continham nomes e valores)
-  ["_dashStats","_monStats","_relStats","_dashNoPeriodo","_dashML"].forEach(function(k){try{delete window[k];}catch(e){window[k]=undefined;}});
-  ["host-5s","md-drill","md-dem","md-afast","md-emppdf","emod","md-aniv","md-reaj","etab-menu","md-grp","md-acs","md-pcfg"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
+  ["_dashStats","_monStats","_relStats","_dashNoPeriodo","_dashML","_paDash"].forEach(function(k){try{delete window[k];}catch(e){window[k]=undefined;}});
+  ["host-5s","md-drill","md-dem","md-afast","md-emppdf","emod","md-aniv","md-reaj","etab-menu","md-grp","md-acs","md-pcfg","md-pa","md-pap","md-pacfg","md-papdf"].forEach(function(id){var el=document.getElementById(id);if(el)el.remove();});
   if(typeof killCH==="function")killCH();
   document.querySelectorAll(".page").forEach(function(pgEl){pgEl.innerHTML="";});
   document.querySelectorAll(".mdl-bg.open,.aniv-bg").forEach(function(m){if(m.classList.contains("aniv-bg"))m.remove();else m.classList.remove("open");});
@@ -1101,7 +1170,7 @@ function go(p){
   document.getElementById("nb-"+p).classList.add("on");
   pg=p;
   document.getElementById("main").classList.toggle("ro-mode",!!ACESSO&&permTela(p)==="ver");
-  ({dashboard:rDash,centros:rCC,employees:function(){empCtx='cad';rEmp();},reajustes:rReaj,grupos:rGrupos,direcionar:rDir,resumo:function(){empCtx='res';rResumo();},folha:rFolha,monitor:rMon,"5s":r5S,lancamento:rLanc,premios:rPrem,indices:rIdx,motivos:rMotivos,relatorio:rRel,calendario:rCal,ponto:rPonto,rponto:rRPonto,backup:function(){BKP_LISTA=null;rBkp();},acessos:function(){ACS_LISTA=null;rAcessos();}})[p]();
+  ({dashboard:rDash,centros:rCC,employees:function(){empCtx='cad';rEmp();},reajustes:rReaj,grupos:rGrupos,direcionar:rDir,resumo:function(){empCtx='res';rResumo();},folha:rFolha,monitor:rMon,"5s":r5S,lancamento:rLanc,premios:rPrem,indices:rIdx,motivos:rMotivos,relatorio:rRel,calendario:rCal,ponto:rPonto,rponto:rRPonto,backup:function(){BKP_LISTA=null;rBkp();},acessos:function(){ACS_LISTA=null;rAcessos();},plano:function(){rPlano("lanc");},planoconc:function(){rPlano("conc");},planodash:rPlanoDash,planopess:rPlanoPess})[p]();
 }
 function toggleSB(){
   sbOpen=!sbOpen;
@@ -2803,6 +2872,10 @@ var TELAS=[
   {k:"calendario",lb:"Aniversarios",ic:"ti-calendar-heart",soVer:true},
   {k:"ponto",lb:"Cartao Ponto",ic:"ti-clock-hour-4"},
   {k:"rponto",lb:"Relatorio de Ponto",ic:"ti-report",soVer:true},
+  {k:"plano",lb:"Plano de Ação - Lançamentos",ic:"ti-list-check"},
+  {k:"planoconc",lb:"Plano de Ação - Concluídas",ic:"ti-circle-check"},
+  {k:"planodash",lb:"Plano de Ação - Dashboard",ic:"ti-chart-donut",soVer:true},
+  {k:"planopess",lb:"Plano de Ação - Pessoas",ic:"ti-users-group"},
   {k:"backup",lb:"Backup",ic:"ti-database"},
   {k:"acessos",lb:"Permissoes de Usuarios",ic:"ti-shield-lock"}
 ];
@@ -4313,12 +4386,12 @@ function mkPdfKit(titulo,periodo,orient,papel){
     doc.setDrawColor(C.line[0],C.line[1],C.line[2]);doc.setLineWidth(.25);doc.line(x,y,x+tw,y);
     return y;
   };
-  K.finalizar=function(nome){
+  K.finalizar=function(nome,rodape){
     var n=doc.getNumberOfPages();
     for(var p=1;p<=n;p++){
       doc.setPage(p);doc.setDrawColor(C.line[0],C.line[1],C.line[2]);doc.setLineWidth(.3);doc.line(K.mg,K.H-9,K.W-K.mg,K.H-9);
       font(7.2);txt([160,160,160]);
-      doc.text("TORR Equipamentos - Gestão de Prêmios",K.mg,K.H-5);
+      doc.text(rodape||"TORR Equipamentos - Gestão de Prêmios",K.mg,K.H-5);
       doc.text(titulo,K.W/2,K.H-5,{align:"center"});
       doc.text("Página "+p+"/"+n,K.W-K.mg,K.H-5,{align:"right"});
     }
@@ -6054,6 +6127,733 @@ function rBkp(){
     +"</div></div>"
     +"<div class='card'><div style='font-weight:700;font-size:15px;color:"+B+";margin-bottom:.75rem'>Backups guardados</div>"+rows+"</div>";
   if(lista===null)bkpListar().then(rBkp).catch(function(e){BKP_ERRO=e.message;BKP_LISTA=[];rBkp();});
+}
+
+
+// ═══════════════════════════════════════
+// PLANO DE AÇÃO 5W2H
+// Colecoes: plano (acoes), planopess (pessoas envolvidas), planocfg (cabecalho do plano)
+// Telas: plano (lancamentos em aberto), planoconc (concluidas), planodash (dashboard), planopess (pessoas)
+// ═══════════════════════════════════════
+var PA_SEED={"acoes":[{"n":1,"oque":"Projetar uma sala comercial para o setor de vendas","porque":"Proporcionar maior privacidade, organização e melhores condições para o desenvolvimento das atividades da equipe de vendas.","como":"Elaborar o layout da sala, definir a disposição dos móveis e equipamentos e desenvolver o projeto de adequação do espaço.","quem":["pp1"],"ini":"2026-10-05","fim":"2026-10-13","onde":"Empresa Torr","quanto":null,"st":"and","pct":50,"obs":"Foi enviado cotação de uma empresa para fazer as escadase aguardando parte elétrica"},{"n":2,"oque":"Implantar um tanque para armazenamento de óleo protetivo","porque":"Evitar a exposição das peças à umidade e reduzir o risco de corrosão e ferrugem durante o armazenamento.","como":"Realizar levantamento das necessidades, elaborar orçamento, definir o modelo adequado e executar a instalação do tanque.","quem":["pp2"],"ini":"2026-10-05","fim":"2026-10-19","onde":"Produção","quanto":1500,"st":"and","pct":50,"obs":"Enviado uma cotação de um fornecedor para Evelindo"},{"n":3,"oque":"Projetar talhas industriais para os postos de trabalho","porque":"Facilitar a movimentação de peças, reduzindo o esforço físico dos colaboradores e aumentando a segurança e a eficiência operacional.","como":"Avaliar os postos de trabalho, dimensionar as talhas, elaborar orçamentos, desenvolver o projeto e realizar a instalação.","quem":["pp2"],"ini":"2026-10-05","fim":"2026-10-19","onde":"Produção","quanto":null,"st":"nao","pct":0,"obs":""},{"n":4,"oque":"Projetar mesa para produção Interna","porque":"Auxiliar na movimentação de peças","como":"Avaliar os postos de trabalho, dimensionar as mesas, elaborar orçamentos, desenvolver o projeto e realizar a instalação.","quem":["pp2"],"ini":"2026-10-05","fim":"2026-10-19","onde":"Produção","quanto":null,"st":"and","pct":50,"obs":"Enviado uma cotação de um fornecedor para Evelindo"},{"n":5,"oque":"Orçamento e projeto do armario em questão","porque":"Para aumentar e organizar as peças na empresa facilitando a rastreabilidade dos produtos e manter a organização","como":"Atraves de fotos retirada da internet, avaliando o tipo de material e custo para apresentar para Anderson fazer a compra","quem":["pp1"],"ini":"2026-10-05","fim":"2026-10-19","onde":"Produção","quanto":null,"st":"nao","pct":0,"obs":"Foi repassado para Anderson para fazer cotação do armário para os colabroadores"},{"n":6,"oque":"Providenciar uma bancada para instalação do pc da produção","porque":"Para instalação do pc da produção agilizando o processo de projeção, reduzindo a dependencia do Anderson","como":"Avaliar os postos de trabalho, dimensionar a bancada necessária , elaborar orçamentos, desenvolver o projeto e realizar a instalação.","quem":["pp2","pp1"],"ini":"2026-10-05","fim":"2026-10-19","onde":"Comercial","quanto":null,"st":"conc","pct":100,"obs":""},{"n":7,"oque":"Instalação do Computador na produção e treinar o colaborador","porque":"Esse sistema agiliza o tempo de produção do Anderson","como":"Atraves de instalação direto na produção para agilizar o processo, mesmo que seja improvisado","quem":["pp1"],"ini":"2026-10-05","fim":"2026-10-19","onde":"Produção","quanto":null,"st":"and","pct":50,"obs":""},{"n":8,"oque":"Instalação de servidor,","porque":"Para melhorar desempenho e segurança dos dados da empresa","como":"Entrar em contato com empresa FK informatica, sugestão da C@p Consultoria para ter ideias para implantação profissional","quem":["pp1"],"ini":"2026-10-05","fim":"2026-10-26","onde":"Produção","quanto":null,"st":"conc","pct":100,"obs":""},{"n":9,"oque":"Contratação de um novo projetista","porque":"Para agilizar os orçamentos e atender as demandas atuais da empresa, melhorar o atendimento da empresa com os clientes","como":"Hoje temos um candidato para buscar saída para essa vaga, mesmo que não seja ele precisamos buscar uma opção","quem":["pp1"],"ini":"2026-10-05","fim":"2026-11-24","onde":"Administração","quanto":null,"st":"conc","pct":100,"obs":"em andamento"},{"n":10,"oque":"Desenvolver um layout administrativo, e comprar um novo computador para desenho solidworks","porque":"Para a nova contratação da empresa,","como":"Atraves de orçamentos, mesas, computadores, pacote soliedworks","quem":["pp1"],"ini":"2026-10-05","fim":"2026-11-24","onde":"Administração","quanto":null,"st":"and","pct":50,"obs":""},{"n":11,"oque":"Avaliação dos Salários dos empregados, e análise do método de avaliação do prêmio de assiuidade","porque":"Para haver regras para distribuir prêmios para conseguir cobrar sobre as faltas e atrasos dos colaboradores","como":"Através do acompanhamento no sistema de gestão da Torr entregue, e análise individual","quem":["pp1","pp2"],"ini":"2026-10-05","fim":"2026-10-12","onde":"Produção","quanto":null,"st":"conc","pct":100,"obs":""},{"n":12,"oque":"Verificar premio anual média de valores, para os colaboradores por semestre","porque":"Ter uma forma correta de distribuição, para manter o padrão na empresa, sem prejudicar os resultados","como":"Estudo da composição do prêmio por semestre","quem":["pp3"],"ini":"2026-10-05","fim":"2026-10-12","onde":"C@p Consultoria","quanto":null,"st":"conc","pct":100,"obs":""},{"n":13,"oque":"1º Fazer limpeza da fossa","porque":"Ações para renovação da licença ambiental","como":"Contratar terceirizado","quem":["pp2"],"ini":"2026-10-05","fim":"2026-10-12","onde":"Administração","quanto":null,"st":"conc","pct":100,"obs":""},{"n":14,"oque":"2º Bandeja para compressor","porque":"Ações para renovação da licença ambiental","como":"Implantar bandeja para compreessor","quem":["pp2"],"ini":"2026-10-05","fim":"2026-10-19","onde":"Administração","quanto":null,"st":"conc","pct":100,"obs":""},{"n":15,"oque":"3º Sucata grenciamento de nota fiscal","porque":"Ações para renovação da licença ambiental","como":"Providenciar nota fiscal para venda de sucata","quem":["pp1"],"ini":"2026-10-05","fim":"2026-10-19","onde":"Administração","quanto":null,"st":"conc","pct":100,"obs":"QUANDO TIVER NOTA"},{"n":16,"oque":"4º Pintura Definição do localTerceirizado/ Ou instalação interna","porque":"Ações para renovação da licença ambiental","como":"Analisar o que possui menor custo e facilidade de implantação","quem":["pp1","pp2"],"ini":"2026-10-05","fim":"2026-10-19","onde":"Administração","quanto":null,"st":"conc","pct":100,"obs":"SERÁ EMITIDO NOTA EM UM PARCEIRO , SERÁ MANTIDO O PROCESSO ATUAL"},{"n":17,"oque":"Cabine de pintura, definir ideias para elaborar um projeto para pintura ( Tales)","porque":"Para atender a demanda da licença ambiental","como":"Conversar com o Tales, que possui experiência nesse tipo de processo!","quem":["pp1"],"ini":"2026-10-05","fim":"2026-10-12","onde":"Administração","quanto":null,"st":"conc","pct":100,"obs":"SERÁ ANALISADO"},{"n":18,"oque":"Tanque do cliente Lajes Butzq material que não foram comprados, e precisa comprar ou produzir (alterar )","porque":"Para finalizar o produto , e entregar o cliente","como":"Tentar resolver internamente para enviar o produto para o cliente","quem":["pp2"],"ini":"2026-10-05","fim":"2026-10-08","onde":"Produção","quanto":null,"st":"conc","pct":100,"obs":""},{"n":19,"oque":"Alteração do Projeto concha","porque":"Para resolver o sistema de captação de residuo","como":"Análise do desenvolvimento, através de desenvolvuimento interno,","quem":["pp1"],"ini":"2026-10-05","fim":"2026-10-19","onde":"Administração","quanto":null,"st":"conc","pct":100,"obs":""},{"n":20,"oque":"Finalizar um projeto de uma garra de 5 ou seis unhas para um cliente","porque":"Para atendimento de demanda de clientes","como":"Criar desenho e orçamento para enviar para o cliente aprovar!, aqui uma das importâncias em ter um desenhista na empresa para dar suporte","quem":["pp1"],"ini":"2026-10-05","fim":"","onde":"Administração","quanto":null,"st":"conc","pct":100,"obs":""},{"n":21,"oque":"Projetar suporte de big bag","porque":"Obter novar opções de venda, para aumentar o faturamento da empresa","como":"Criar desenho e orçamento para enviar para o cliente aprovar!","quem":["pp1"],"ini":"2026-10-05","fim":"","onde":"Administração","quanto":null,"st":"and","pct":50,"obs":"Em teste"},{"n":22,"oque":"Cliente comprou uma garra de 150litros","porque":"A garra atual está pegando muito peso , e a ideia seria enviar algo menor ou propor uma ideia","como":"Evelindo deu a ideia de reduzir duas unhas da garra enteregue ao cliente, o Anderson irá passar as instruções ao cliente","quem":["pp2","pp1"],"ini":"2026-10-05","fim":"2026-10-12","onde":"Administração","quanto":null,"st":"and","pct":50,"obs":""},{"n":23,"oque":"Implantação de um sistema de compras eficiente com identifcação de códigos","porque":"Para agilizar o processo de compra, e reduzir o retrabalho em identificar os produtos .","como":"Criar metodologia de compra, implantar um sistema de gestão de compras com cadastro de códigos e orçamentos","quem":["pp2","pp1","pp3"],"ini":"2026-10-05","fim":"2026-11-30","onde":"Administração","quanto":null,"st":"nao","pct":0,"obs":"Procedimentar"},{"n":24,"oque":"Usinagem Atual é realizad internamente, porém com muitos problemas ligado a atrasos e faltas do colaborador, analisar custos externos","porque":"Ter uma opção exter na para casos urgentes ou uma possível troca e dependência interna","como":"fazer comparação de custos internos x custos externos","quem":["pp2","pp1","pp3"],"ini":"2026-10-05","fim":"2026-11-30","onde":"Administração","quanto":null,"st":"conc","pct":100,"obs":"Processo exter ficou na amostragem levantada em torno de 37,20% mais caro!"},{"n":25,"oque":"Manutenção preventiva dos veiculos","porque":"Para evitar surpresas, acidentes com o veiculo","como":"Criar um planilha de verificação do que deve ser realizado","quem":["pp1"],"ini":"2026-11-05","fim":"2026-11-09","onde":"Administração","quanto":null,"st":"nao","pct":0,"obs":""},{"n":26,"oque":"Sistema de exaustor, melhorar o ambiente de produção","porque":"Reduzir as condições de calor do setor de produção","como":"Através de cotação e implantação de um sistema para melhorar a ventilação da fábrica","quem":["pp2","pp1","pp3"],"ini":"2026-11-05","fim":"","onde":"Administração","quanto":null,"st":"nao","pct":0,"obs":"Cotação"},{"n":27,"oque":"Orçamento de uma escada para o setor comercial novo","porque":"Para dar andamento ao novo setor comercial","como":"Fazer orçamentos externos para conseguir dar andamento ao projeto","quem":["pp1"],"ini":"2026-11-05","fim":"","onde":"Administração","quanto":null,"st":"nao","pct":0,"obs":"Cotação"},{"n":28,"oque":"Sistema de Formas (listagem de corte Plasma)","porque":"Para facilitar o uso do operador e ter mais agilidade sem dependência do seto adm","como":"Será iniciado um ajuste de pastas de redes remota com controle inicial de planilhas","quem":["pp1"],"ini":"2026-11-05","fim":"","onde":"Administração","quanto":null,"st":"nao","pct":0,"obs":"Cotação"}],"pess":[{"id":"pp1","nome":"Anderson","tipo":"interno","cargo":"","setor":"","email":"","fone":"","ativo":true},{"id":"pp2","nome":"Evelindo","tipo":"interno","cargo":"","setor":"","email":"","fone":"","ativo":true},{"id":"pp3","nome":"C@p Consultoria","tipo":"consultoria","cargo":"","setor":"","email":"","fone":"","ativo":true}],"cfg":{"id":"cfg","num":"PLANO 01/2026","resp":"","ini":"2026-10-05","prev":"2026-11-30","obj":"Reduzir retrabalho, melhorar a organização do processo e garantir que cada ação tenha responsável e prazo definido."}};
+// Primeira carga: importa o plano da planilha 5W2H (somente se as 3 colecoes estiverem vazias)
+function initPlano(){
+  var s=JSON.parse(JSON.stringify(PA_SEED)),agora=new Date().toISOString();
+  s.acoes.forEach(function(a){a.id=uid();a.dtc="";a.cri=agora;a.atu=agora;});
+  return {plano:s.acoes,pess:s.pess,cfg:[s.cfg]};
+}
+window.initPlano=initPlano;
+
+var PA_SIT={
+  atr:{lb:"Atrasado",sh:"Atrasado",co:"#c0392b",bg:"#fbe9e7",ic:"ti-alarm"},
+  and:{lb:"Em andamento",sh:"Em andamento",co:"#1f5fa8",bg:"#e3eefa",ic:"ti-progress"},
+  nao:{lb:"Não iniciado",sh:"Não iniciado",co:"#8a94a0",bg:"#eceff2",ic:"ti-player-pause"},
+  catr:{lb:"Concluído com atraso",sh:"Concl. c/ atraso",co:"#b8820a",bg:"#fdf3e1",ic:"ti-clock-check"},
+  conc:{lb:"Concluído",sh:"Concluído",co:"#1a7a4a",bg:"#e4f4ea",ic:"ti-circle-check"},
+  canc:{lb:"Cancelado",sh:"Cancelado",co:"#7b3fa0",bg:"#f1e7f8",ic:"ti-ban"}
+};
+var PA_SIT_ORD=["atr","and","nao","catr","conc","canc"];
+var PA_STS=[{k:"nao",lb:"Não iniciado",ic:"ti-player-pause"},{k:"and",lb:"Em andamento",ic:"ti-progress"},{k:"conc",lb:"Concluído",ic:"ti-circle-check"},{k:"canc",lb:"Cancelado",ic:"ti-ban"}];
+var PA_TIPO={interno:{lb:"Interno",co:"#3a4046",bg:"#eceef0"},consultoria:{lb:"Consultoria",co:"#1f5fa8",bg:"#e3eefa"},externo:{lb:"Externo",co:"#7b3fa0",bg:"#f1e7f8"}};
+var PA_F={lanc:{q:"",sit:"",quem:"",onde:""},conc:{q:"",sit:"",quem:"",onde:""}};
+var PA_SORT={lanc:{k:"n",d:1},conc:{k:"dtc",d:-1}};
+var PA_DF={quem:"",onde:""};
+var PA_ED={quem:[]};
+
+// ── utilitarios ──
+function paSit(a){
+  if(a.st==="canc")return "canc";
+  if(a.st==="conc")return a.fim&&a.dtc&&a.dtc>a.fim?"catr":"conc";
+  if(a.fim&&a.fim<hoje())return "atr";
+  return a.st==="and"?"and":"nao";
+}
+function paAberta(a){return a.st!=="conc"&&a.st!=="canc";}
+function paCfg(){var c=(DB.planocfg||[]).find(function(x){return x.id==="cfg";});return c||{id:"cfg",num:"",resp:"",obj:"",ini:"",prev:""};}
+function paPes(id){return (DB.planopess||[]).find(function(p){return p.id===id;});}
+function paQuem(a){return (a.quem||[]).map(paPes).filter(Boolean);}
+function paQuemTxt(a){return paQuem(a).map(function(p){return p.nome;}).join(", ");}
+function paPessOrd(){return (DB.planopess||[]).slice().sort(function(a,b){return a.nome.localeCompare(b.nome);});}
+function paDias(a,b){return Math.round((new Date(b+"T12:00:00")-new Date(a+"T12:00:00"))/864e5);}
+function paAddDias(d,n){var x=new Date(d+"T12:00:00");x.setDate(x.getDate()+n);return ptD(x);}
+function paSetores(){var m={};(DB.plano||[]).forEach(function(a){if(a.onde)m[a.onde]=1;});(DB.planopess||[]).forEach(function(p){if(p.setor)m[p.setor]=1;});return Object.keys(m).sort(function(a,b){return a.localeCompare(b);});}
+function paProxN(){return (DB.plano||[]).reduce(function(m,a){return Math.max(m,+a.n||0);},0)+1;}
+function paRGB(h){h=h.replace("#","");var n=parseInt(h,16);return [n>>16,(n>>8)&255,n&255];}
+function paIni(n){return ini(n||"?");}
+function paStBdg(a){
+  var k=paSit(a),S=PA_SIT[k],x="";
+  if(k==="atr")x="<span class='pa-atr'>"+paDias(a.fim,hoje())+" dia"+(paDias(a.fim,hoje())!==1?"s":"")+" de atraso</span>";
+  return "<span class='pa-st' style='background:"+S.bg+";color:"+S.co+"'><i class='ti "+S.ic+"'></i>"+S.lb+"</span>"+x;
+}
+function paPctHtml(a){
+  var p=Math.max(0,Math.min(100,+a.pct||0)),c=PA_SIT[paSit(a)].co;
+  return "<div class='pa-pct'><div class='bar'><i style='width:"+p+"%;background:"+c+"'></i></div><b style='color:"+c+"'>"+p+"%</b></div>";
+}
+function paQuemHtml(a){
+  var l=paQuem(a);if(!l.length)return "<span style='color:#b0b8c1'>—</span>";
+  return "<div class='pa-quem'>"+l.map(function(p){return "<span class='pa-pes' title='"+esc(p.nome)+"'><span class='av'>"+esc(paIni(p.nome))+"</span>"+esc(p.nome.split(" ")[0])+"</span>";}).join("")+"</div>";
+}
+function paPode(){return !ACESSO||permTela(pg)==="editar";}
+function paMd(id,titulo,body,w){
+  paMdFechar(id);
+  var div=document.createElement("div");div.className="mdl-bg open";div.id=id;div.style.zIndex="9500";
+  div.innerHTML="<div class='mdl' role='dialog' aria-modal='true' style='width:"+(w||560)+"px'>"
+    +"<div class='mdl-hd'><div class='mdl-tt'>"+titulo+"</div><button class='mdl-x' onclick=\"paMdFechar('"+id+"')\" aria-label='Fechar'><i class='ti ti-x'></i></button></div>"
+    +"<div class='mdl-bd'>"+body+"</div></div>";
+  document.body.appendChild(div);
+  div.addEventListener("mousedown",function(ev){if(ev.target===div)paMdFechar(id);});
+  var f=div.querySelector("textarea,input[type=text]");if(f)setTimeout(function(){try{f.focus();}catch(e){}},60);
+  return div;
+}
+function paMdFechar(id){var m=document.getElementById(id);if(m)m.remove();}
+function paRefresh(){
+  if(pg==="plano")rPlano("lanc");else if(pg==="planoconc")rPlano("conc");
+  else if(pg==="planodash")rPlanoDash();else if(pg==="planopess")rPlanoPess();
+}
+// Grava a importacao inicial da planilha na primeira vez que alguem com permissao de editar abre o modulo
+function paSeedSave(){
+  if(window._paSeedTry||!window._seeded||!(window._seeded.plano||window._seeded.planocfg||window._seeded.planopess))return;
+  if(ACESSO&&permTela(pg)!=="editar")return;
+  window._paSeedTry=true;dbSave();
+}
+function paDatalists(){
+  return "<datalist id='pa-dl-onde'>"+paSetores().map(function(s){return "<option value='"+esc(s)+"'>";}).join("")+"</datalist>"
+    +"<datalist id='pa-dl-emp'>"+(DB.emp||[]).filter(ativoVis).map(function(e){return "<option value='"+esc(e.nome)+"'>";}).join("")+"</datalist>"
+    +"<datalist id='pa-dl-pes'>"+paPessOrd().map(function(p){return "<option value='"+esc(p.nome)+"'>";}).join("")+"</datalist>";
+}
+
+// ── cabecalho do plano (Plano nº, responsavel, datas, objetivo) ──
+function paInfoHtml(){
+  var c=paCfg();
+  return "<div class='pa-info'>"
+    +"<div><span>Plano Nº</span><b>"+esc(c.num||"—")+"</b></div>"
+    +"<div><span>Responsável</span><b>"+esc(c.resp||"—")+"</b></div>"
+    +"<div><span>Data de início</span><b>"+(c.ini?fmtD(c.ini):"—")+"</b></div>"
+    +"<div><span>Previsão de término</span><b>"+(c.prev?fmtD(c.prev):"—")+"</b></div>"
+    +"<div class='obj'><span>Objetivo <button class='pa-ed lnk-add' style='float:right' onclick='paCfgForm()'><i class='ti ti-edit'></i>Editar cabeçalho</button></span><b>"+esc(c.obj||"—")+"</b></div>"
+    +"</div>";
+}
+function paCfgForm(){
+  var c=paCfg();
+  paMd("md-pacfg","<i class='ti ti-file-description'></i>Cabeçalho do plano",
+    "<div class='fr2'><div class='fr'><label class='lbl'>Plano nº</label><input type='text' id='pac-num' value='"+esc(c.num)+"' placeholder='Ex: PLANO 01/2026'/></div>"
+    +"<div class='fr'><label class='lbl'>Responsável</label><input type='text' id='pac-resp' value='"+esc(c.resp)+"' list='pa-dl-pes' placeholder='Gerência / responsável'/></div></div>"
+    +"<div class='fr2'><div class='fr'><label class='lbl'>Data de início</label><input type='date' id='pac-ini' value='"+esc(c.ini)+"'/></div>"
+    +"<div class='fr'><label class='lbl'>Previsão de término</label><input type='date' id='pac-prev' value='"+esc(c.prev)+"'/></div></div>"
+    +"<div class='fr'><label class='lbl'>Objetivo</label><textarea id='pac-obj' class='pa-ta' rows='3' placeholder='Ex: Reduzir retrabalho e garantir que cada ação tenha responsável e prazo.'>"+esc(c.obj)+"</textarea></div>"
+    +paDatalists()
+    +"<div class='mdl-ft'><button class='btng' onclick=\"paMdFechar('md-pacfg')\">Cancelar</button><button class='btnp' onclick='paCfgSalvar()'>Salvar cabeçalho</button></div>",560);
+}
+function paCfgSalvar(){
+  var o={id:"cfg",num:gv("pac-num").trim(),resp:gv("pac-resp").trim(),ini:gv("pac-ini"),prev:gv("pac-prev"),obj:gv("pac-obj").trim()};
+  if(o.ini&&o.prev&&o.prev<o.ini){alert("A previsão de término não pode ser antes da data de início.");return;}
+  DB.planocfg=(DB.planocfg||[]).filter(function(x){return x.id!=="cfg";}).concat([o]);
+  paMdFechar("md-pacfg");dbSave();paRefresh();
+}
+
+// ═══ TELAS: LANCAMENTOS (em aberto) E CONCLUIDOS ═══
+function paBase(ctx){return (DB.plano||[]).filter(ctx==="lanc"?paAberta:function(a){return !paAberta(a);});}
+function paSortVal(a,k){
+  if(k==="sit")return PA_SIT_ORD.indexOf(paSit(a));
+  if(k==="quem")return paQuemTxt(a).toLowerCase();
+  if(k==="quanto")return a.quanto==null?-1:a.quanto;
+  if(k==="n"||k==="pct")return +a[k]||0;
+  return (a[k]||"").toString().toLowerCase();
+}
+function paLista(ctx){
+  var f=PA_F[ctx],q=(f.q||"").trim().toLowerCase(),S=PA_SORT[ctx];
+  return paBase(ctx).filter(function(a){
+    if(f.sit&&paSit(a)!==f.sit)return false;
+    if(f.quem&&(a.quem||[]).indexOf(f.quem)<0)return false;
+    if(f.onde&&(a.onde||"")!==f.onde)return false;
+    if(q){var t=[a.n,a.oque,a.porque,a.como,a.onde,a.obs,paQuemTxt(a)].join(" ").toLowerCase();if(t.indexOf(q)<0)return false;}
+    return true;
+  }).sort(function(a,b){
+    var va=paSortVal(a,S.k),vb=paSortVal(b,S.k);
+    var ea=va===""||va===-1,eb=vb===""||vb===-1;
+    if(S.k!=="n"&&ea!==eb)return ea?1:-1;
+    return (va<vb?-1:va>vb?1:0)*S.d||(+a.n-+b.n);
+  });
+}
+function rPlano(ctx){
+  paSeedSave();
+  var el=document.getElementById(ctx==="lanc"?"p-plano":"p-planoconc");if(!el)return;
+  var base=paBase(ctx),f=PA_F[ctx],cnt={};
+  PA_SIT_ORD.forEach(function(k){cnt[k]=0;});base.forEach(function(a){cnt[paSit(a)]++;});
+  var lim=paAddDias(hoje(),7),vence=ctx==="lanc"?base.filter(function(a){return a.fim&&a.fim>=hoje()&&a.fim<=lim;}).length:0;
+  var chips=(ctx==="lanc"?["","atr","and","nao"]:["","conc","catr","canc"]).map(function(k){
+    var S=k?PA_SIT[k]:{lb:ctx==="lanc"?"Todas em aberto":"Todas finalizadas",co:B};
+    return "<button class='pa-chip"+(f.sit===k?" on":"")+"' onclick=\"paFil('"+ctx+"','sit','"+k+"')\"><b style='color:"+S.co+"'>"+(k?cnt[k]:base.length)+"</b>"+S.lb+"</button>";
+  }).join("")+(ctx==="lanc"?"<span class='pa-chip' style='cursor:default'><b style='color:#e6a817'>"+vence+"</b>Vencem em 7 dias</span>":"");
+  var pess=paPessOrd(),setores=paSetores();
+  var titulo=ctx==="lanc"?"Plano de Ação — Lançamentos":"Plano de Ação — Concluídos";
+  var sub=ctx==="lanc"?"Ações em aberto no formato 5W2H":"Ações concluídas e canceladas";
+  el.innerHTML="<div class='pg-hd'><div><h1 class='h1'>"+titulo+"</h1><div class='sub'>"+sub+"</div></div>"
+    +"<div style='display:flex;gap:8px;flex-wrap:wrap'>"
+    +"<button class='btng btn-ic' onclick=\"paPDFModal('"+ctx+"')\"><i class='ti ti-printer'></i>Imprimir PDF</button>"
+    +(ctx==="lanc"?"<button class='btnp btn-ic' onclick='paForm()'><i class='ti ti-plus'></i>Nova ação</button>":"")
+    +"</div></div>"
+    +paInfoHtml()
+    +"<div class='pa-chips'>"+chips+"</div>"
+    +"<div class='pa-fil'>"
+    +"<input type='text' id='pa-q-"+ctx+"' placeholder='Buscar por nº, o que, por quê, como, onde, observação...' value='"+esc(f.q)+"' oninput=\"paFil('"+ctx+"','q',this.value,true)\"/>"
+    +"<select onchange=\"paFil('"+ctx+"','quem',this.value)\"><option value=''>Quem: todos</option>"+pess.map(function(p){return "<option value='"+p.id+"'"+(f.quem===p.id?" selected":"")+">"+esc(p.nome)+"</option>";}).join("")+"</select>"
+    +"<select onchange=\"paFil('"+ctx+"','onde',this.value)\"><option value=''>Onde: todos</option>"+setores.map(function(s){return "<option value='"+esc(s)+"'"+(f.onde===s?" selected":"")+">"+esc(s)+"</option>";}).join("")+"</select>"
+    +((f.q||f.sit||f.quem||f.onde)?"<button class='btng btn-ic' onclick=\"paLimpar('"+ctx+"')\"><i class='ti ti-filter-off'></i>Limpar filtros</button>":"")
+    +"</div>"
+    +"<div class='card' style='padding:.75rem'><div id='pa-tb-"+ctx+"'></div></div>";
+  paTabela(ctx);
+}
+function paFil(ctx,k,v,soTabela){PA_F[ctx][k]=v;if(soTabela)paTabela(ctx);else rPlano(ctx);}
+function paLimpar(ctx){PA_F[ctx]={q:"",sit:"",quem:"",onde:""};rPlano(ctx);}
+function paOrd(ctx,k){var S=PA_SORT[ctx];PA_SORT[ctx]={k:k,d:S.k===k?-S.d:1};paTabela(ctx);}
+function paTabela(ctx){
+  var box=document.getElementById("pa-tb-"+ctx);if(!box)return;
+  var L=paLista(ctx),S=PA_SORT[ctx],conc=ctx==="conc";
+  var cols=[["n","ID","c"],["oque","O QUE?"],["porque","POR QUÊ?"],["como","COMO?"],["quem","QUEM?"],["ini","INÍCIO","c"],["fim","FIM","c"]]
+    .concat(conc?[["dtc","CONCLUÍDO EM","c"]]:[])
+    .concat([["onde","ONDE?"],["quanto","QUANTO?","r"],["sit","STATUS"]])
+    .concat(conc?[]:[["pct","%"]])
+    .concat([["obs","OBSERVAÇÕES"]]);
+  if(!L.length){
+    box.innerHTML="<div class='empty'><i class='ti "+(conc?"ti-circle-check":"ti-list-check")+"'></i>"
+      +(paBase(ctx).length?"Nenhuma ação com esses filtros.":(conc?"Nenhuma ação concluída ainda.":"Nenhuma ação em aberto. Clique em Nova ação para lançar."))+"</div>";
+    return;
+  }
+  var th=cols.map(function(c){
+    var on=S.k===c[0];
+    return "<th class='"+(c[2]==="c"?"c":"")+"' onclick=\"paOrd('"+ctx+"','"+c[0]+"')\"><div class='etab-hd'><span>"+c[1]+"</span><span class='etab-ord"+(on?" on":"")+"'>"+(on?(S.d>0?"↑":"↓"):"↕")+"</span></div></th>";
+  }).join("")+"<th class='c pa-ed' style='cursor:default'>AÇÕES</th>";
+  var tot=0;
+  var rows=L.map(function(a){
+    if(typeof a.quanto==="number")tot+=a.quanto;
+    var k=paSit(a);
+    return "<tr><td class='c' style='font-weight:800;color:"+B+"'>"+esc(a.n)+"</td>"
+      +"<td class='tx' style='font-weight:700;color:#2a2e33'>"+esc(a.oque)+"</td>"
+      +"<td class='tx'>"+esc(a.porque||"")+"</td>"
+      +"<td class='tx'>"+esc(a.como||"")+"</td>"
+      +"<td>"+paQuemHtml(a)+"</td>"
+      +"<td class='c'>"+(a.ini?fmtD(a.ini):"—")+"</td>"
+      +"<td class='c' style='"+(k==="atr"?"color:"+RED+";font-weight:800":"")+"'>"+(a.fim?fmtD(a.fim):"—")+"</td>"
+      +(conc?"<td class='c' style='font-weight:700;color:"+PA_SIT[k].co+"'>"+(a.dtc?fmtD(a.dtc):(a.st==="canc"?"—":"<span style='color:#b0b8c1'>não informado</span>"))+"</td>":"")
+      +"<td>"+esc(a.onde||"—")+"</td>"
+      +"<td class='r'>"+(typeof a.quanto==="number"?fmtBRL(a.quanto):"—")+"</td>"
+      +"<td>"+paStBdg(a)+"</td>"
+      +(conc?"":"<td>"+paPctHtml(a)+"</td>")
+      +"<td class='ob'>"+esc(a.obs||"")+"</td>"
+      +"<td class='act pa-ed'>"
+      +"<button class='ibedt' title='Editar' onclick=\"paForm('"+a.id+"')\"><i class='ti ti-edit'></i></button>"
+      +(conc?"<button class='ibedt' title='Reabrir ação' onclick=\"paReabrir('"+a.id+"')\"><i class='ti ti-arrow-back-up'></i></button>"
+            :"<button class='ibedt' title='Marcar como concluída' style='color:"+GRN+"' onclick=\"paConcluir('"+a.id+"')\"><i class='ti ti-circle-check'></i></button>")
+      +"<button class='ibdel' title='Excluir' onclick=\"paExcluir('"+a.id+"')\"><i class='ti ti-trash'></i></button></td></tr>";
+  }).join("");
+  var nc=cols.length,qi=cols.map(function(c){return c[0];}).indexOf("quanto");
+  box.innerHTML="<div class='etab-wrap'><table class='etab pa-tab'><thead><tr>"+th+"</tr></thead><tbody>"+rows+"</tbody>"
+    +"<tfoot><tr><td colspan='"+qi+"'>"+L.length+" aç"+(L.length!==1?"ões":"ão")+(L.length!==paBase(ctx).length?" (de "+paBase(ctx).length+")":"")+"</td>"
+    +"<td class='r'>"+fmtBRL(tot)+"</td><td colspan='"+(nc-qi-1)+"'></td>"+"<td class='pa-ed'></td></tr></tfoot></table></div>";
+}
+
+// ── formulario 5W2H ──
+function paForm(id){
+  var a=id?(DB.plano||[]).find(function(x){return x.id===id;}):null;
+  PA_ED={quem:a?(a.quem||[]).slice():[]};
+  var st=a?a.st:"nao",pct=a?(+a.pct||0):0;
+  function w(tag,lb,hint){return "<label class='lbl'><span class='pa-w'>"+tag+"</span>"+lb+(hint?" <span class='opt'>"+hint+"</span>":"")+"</label>";}
+  var stb=PA_STS.map(function(s){return "<button type='button' class='seg-b"+(s.k===st?" on":"")+"' id='pa-st-"+s.k+"' onclick=\"paSetSt('"+s.k+"')\"><i class='ti "+s.ic+"'></i>"+s.lb+"</button>";}).join("");
+  paMd("md-pa","<i class='ti ti-list-check'></i>"+(a?"Editar ação nº "+esc(a.n):"Nova ação • Nº "+paProxN()),
+    "<input type='hidden' id='pa-id' value='"+(a?a.id:"")+"'/><input type='hidden' id='pa-st' value='"+st+"'/>"
+    +"<div class='fr'>"+w("WHAT","O que?","qual ação será realizada? comece com um verbo")+"<textarea id='pa-oque' class='pa-ta' rows='2' placeholder='Ex: Criar um checklist padrão para reduzir erros'>"+(a?esc(a.oque):"")+"</textarea></div>"
+    +"<div class='fr'>"+w("WHY","Por quê?","qual problema ou objetivo justifica a ação?")+"<textarea id='pa-porque' class='pa-ta' rows='2' placeholder='Ex: Reduzir retrabalho e custo'>"+(a?esc(a.porque||""):"")+"</textarea></div>"
+    +"<div class='fr'>"+w("HOW","Como?","como a equipe vai executar?")+"<textarea id='pa-como' class='pa-ta' rows='2' placeholder='Ex: Mapear os erros mais frequentes, criar o checklist e validar com a equipe'>"+(a?esc(a.como||""):"")+"</textarea></div>"
+    +"<div class='fr'>"+w("WHO","Quem?","responsáveis por fazer ou acompanhar")
+    +"<div class='pa-pick' id='pa-pick'></div>"
+    +"<div style='display:flex;gap:6px;margin-top:6px'><input type='text' id='pa-novap' list='pa-dl-emp' placeholder='Cadastrar nova pessoa (nome)' onkeydown=\"if(event.key==='Enter'){event.preventDefault();paAddPesRap();}\"/>"
+    +"<button type='button' class='btng btn-ic' style='white-space:nowrap' onclick='paAddPesRap()'><i class='ti ti-user-plus'></i>Adicionar</button></div></div>"
+    +"<div class='fr2'><div class='fr'>"+w("WHEN","Início")+"<input type='date' id='pa-ini' value='"+(a?esc(a.ini||""):hoje())+"'/></div>"
+    +"<div class='fr'>"+w("WHEN","Fim (prazo)")+"<input type='date' id='pa-fim' value='"+(a?esc(a.fim||""):"")+"'/></div></div>"
+    +"<div class='fr2'><div class='fr'>"+w("WHERE","Onde?","setor, unidade ou processo")+"<input type='text' id='pa-onde' list='pa-dl-onde' value='"+(a?esc(a.onde||""):"")+"' placeholder='Ex: Produção'/></div>"
+    +"<div class='fr'>"+w("HOW MUCH","Quanto? (R$)","custo previsto")+"<input type='number' id='pa-quanto' min='0' step='0.01' value='"+(a&&typeof a.quanto==="number"?a.quanto:"")+"' placeholder='0,00'/></div></div>"
+    +"<div class='fr'><label class='lbl'>Status</label><div class='seg seg-full pa-seg'>"+stb+"</div></div>"
+    +"<div class='fr2'><div class='fr'><label class='lbl'>% concluído</label><div style='display:flex;align-items:center;gap:10px'>"
+    +"<input type='range' id='pa-pctr' min='0' max='100' step='5' value='"+pct+"' style='flex:1;accent-color:#3a4046' oninput=\"document.getElementById('pa-pct').value=this.value\"/>"
+    +"<input type='number' id='pa-pct' min='0' max='100' step='1' value='"+pct+"' style='width:74px' oninput=\"document.getElementById('pa-pctr').value=this.value\"/></div></div>"
+    +"<div class='fr' id='pa-dtc-box' style='"+(st==="conc"?"":"display:none")+"'><label class='lbl'>Data de conclusão</label><input type='date' id='pa-dtc' value='"+(a&&a.dtc?esc(a.dtc):hoje())+"'/></div></div>"
+    +"<div class='fr'><label class='lbl'>Observações</label><textarea id='pa-obs' class='pa-ta' rows='2' placeholder='Andamento, cotações, pendências...'>"+(a?esc(a.obs||""):"")+"</textarea></div>"
+    +paDatalists()
+    +"<div class='mdl-ft'><button class='btng' onclick=\"paMdFechar('md-pa')\">Cancelar</button><button class='btnp' onclick='paSalvar()'>"+(a?"Salvar alterações":"Lançar ação")+"</button></div>",680);
+  paPick();
+}
+function paPick(){
+  var el=document.getElementById("pa-pick");if(!el)return;
+  var L=paPessOrd().filter(function(p){return p.ativo!==false||PA_ED.quem.indexOf(p.id)>=0;});
+  el.innerHTML=L.length?L.map(function(p){
+    return "<label><input type='checkbox'"+(PA_ED.quem.indexOf(p.id)>=0?" checked":"")+" onchange=\"paTogQuem('"+p.id+"',this.checked)\"/><i class='ti ti-user'></i>"+esc(p.nome)+"</label>";
+  }).join(""):"<span style='color:#999;font-size:12px'>Nenhuma pessoa cadastrada. Digite um nome abaixo e clique em Adicionar.</span>";
+}
+function paTogQuem(id,on){PA_ED.quem=PA_ED.quem.filter(function(x){return x!==id;});if(on)PA_ED.quem.push(id);}
+function paAddPesRap(){
+  var nm=gv("pa-novap").trim();if(!nm)return;
+  var ex=(DB.planopess||[]).find(function(p){return p.nome.toLowerCase()===nm.toLowerCase();});
+  if(!ex){
+    var e=(DB.emp||[]).find(function(x){return x.nome.toLowerCase()===nm.toLowerCase();});
+    ex={id:uid(),nome:nm,cargo:e&&e.func||"",setor:"",email:"",fone:"",tipo:"interno",ativo:true};
+    DB.planopess=(DB.planopess||[]).concat([ex]);
+  }else if(ex.ativo===false)ex.ativo=true;
+  if(PA_ED.quem.indexOf(ex.id)<0)PA_ED.quem.push(ex.id);
+  document.getElementById("pa-novap").value="";paPick();
+}
+function paSetSt(k){
+  document.getElementById("pa-st").value=k;
+  PA_STS.forEach(function(s){var b=document.getElementById("pa-st-"+s.k);if(b)b.classList.toggle("on",s.k===k);});
+  var p=document.getElementById("pa-pct"),r=document.getElementById("pa-pctr"),v=+p.value||0;
+  if(k==="conc")v=100;else if(k==="nao")v=0;else if(k==="and"&&(v===0||v===100))v=50;
+  p.value=v;r.value=v;
+  document.getElementById("pa-dtc-box").style.display=k==="conc"?"":"none";
+  var d=document.getElementById("pa-dtc");if(k==="conc"&&d&&!d.value)d.value=hoje();
+}
+function paSalvar(){
+  var id=gv("pa-id"),oque=gv("pa-oque").trim();
+  if(!oque){alert("Informe O QUE será feito.");document.getElementById("pa-oque").focus();return;}
+  var ini=gv("pa-ini"),fim=gv("pa-fim");
+  if(ini&&fim&&fim<ini){alert("O prazo (fim) não pode ser antes do início.");return;}
+  var qt=gv("pa-quanto").trim(),quanto=null;
+  if(qt!==""){quanto=parseFloat(qt.replace(",","."));if(isNaN(quanto)||quanto<0){alert("Valor de QUANTO inválido.");return;}}
+  var st=gv("pa-st")||"nao",pct=parseInt(gv("pa-pct"),10);if(isNaN(pct))pct=0;pct=Math.max(0,Math.min(100,pct));if(st==="conc")pct=100;
+  var dtc=st==="conc"?(gv("pa-dtc")||hoje()):"";
+  if(!PA_ED.quem.length&&!confirm("Nenhuma pessoa em QUEM. Salvar assim mesmo?"))return;
+  var o={oque:oque,porque:gv("pa-porque").trim(),como:gv("pa-como").trim(),quem:PA_ED.quem.slice(),ini:ini,fim:fim,
+    onde:gv("pa-onde").trim(),quanto:quanto,st:st,pct:pct,dtc:dtc,obs:gv("pa-obs").trim(),atu:new Date().toISOString()};
+  if(id){var a=DB.plano.find(function(x){return x.id===id;});if(a)Object.assign(a,o);}
+  else{o.id=uid();o.n=paProxN();o.cri=o.atu;DB.plano=(DB.plano||[]).concat([o]);}
+  paMdFechar("md-pa");dbSave();paRefresh();
+}
+function paConcluir(id){
+  var a=DB.plano.find(function(x){return x.id===id;});if(!a)return;
+  var d=prompt("Concluir a ação nº "+a.n+"?\n\nData de conclusão (dd/mm/aaaa):",fmtD(hoje()));
+  if(d===null)return;
+  var m=/^(\d{2})\/(\d{2})\/(\d{4})$/.exec(d.trim());
+  if(!m){alert("Data inválida. Use o formato dd/mm/aaaa.");return;}
+  a.st="conc";a.pct=100;a.dtc=m[3]+"-"+m[2]+"-"+m[1];a.atu=new Date().toISOString();
+  dbSave();paRefresh();
+}
+function paReabrir(id){
+  var a=DB.plano.find(function(x){return x.id===id;});if(!a)return;
+  if(!confirm("Reabrir a ação nº "+a.n+"? Ela volta para Lançamentos como Em andamento."))return;
+  a.st="and";a.dtc="";if(+a.pct>=100||!+a.pct)a.pct=50;a.atu=new Date().toISOString();
+  dbSave();paRefresh();
+}
+function paExcluir(id){
+  var a=DB.plano.find(function(x){return x.id===id;});if(!a)return;
+  if(!confirm("Excluir a ação nº "+a.n+"?\n\n"+a.oque))return;
+  DB.plano=DB.plano.filter(function(x){return x.id!==id;});dbSave();paRefresh();
+}
+// Abre uma acao a partir do dashboard (na tela certa, com permissao de editar)
+function paAbrir(id){
+  var a=(DB.plano||[]).find(function(x){return x.id===id;});if(!a)return;
+  var p=paAberta(a)?"plano":"planoconc";if(ACESSO&&permTela(p)==="nenhum")return;
+  go(p);if(!ACESSO||permTela(p)==="editar")paForm(id);
+}
+function paIrSit(k){
+  var c=["conc","catr","canc"].indexOf(k)>=0?"conc":"lanc",p=c==="conc"?"planoconc":"plano";
+  if(ACESSO&&permTela(p)==="nenhum")return;
+  PA_F[c]={q:"",sit:k,quem:PA_DF.quem,onde:PA_DF.onde};go(p);
+}
+
+// ═══ PESSOAS ENVOLVIDAS ═══
+function paPesStats(id){
+  var s={tot:0,ab:0,atr:0,conc:0};
+  (DB.plano||[]).forEach(function(a){if((a.quem||[]).indexOf(id)<0)return;var k=paSit(a);s.tot++;if(k==="atr")s.atr++;if(paAberta(a))s.ab++;if(k==="conc"||k==="catr")s.conc++;});
+  return s;
+}
+function rPlanoPess(){
+  paSeedSave();
+  var el=document.getElementById("p-planopess");if(!el)return;
+  var L=paPessOrd(),at=L.filter(function(p){return p.ativo!==false;}).length,comAtr=L.filter(function(p){return paPesStats(p.id).atr>0;}).length;
+  var rows=L.map(function(p){
+    var s=paPesStats(p.id),T=PA_TIPO[p.tipo]||PA_TIPO.interno;
+    return "<tr class='"+(p.ativo===false?"off":"")+"'><td class='nm'><span class='pa-pes' style='font-size:12px'><span class='av'>"+esc(paIni(p.nome))+"</span>"+esc(p.nome)+"</span></td>"
+      +"<td>"+esc(p.cargo||"—")+"</td><td>"+esc(p.setor||"—")+"</td>"
+      +"<td><span class='bdg' style='background:"+T.bg+";color:"+T.co+"'>"+T.lb.toUpperCase()+"</span></td>"
+      +"<td>"+esc(p.email||"—")+"</td><td>"+esc(p.fone||"—")+"</td>"
+      +"<td class='c' style='font-weight:800'>"+s.tot+"</td><td class='c' style='color:#1f5fa8;font-weight:700'>"+s.ab+"</td>"
+      +"<td class='c' style='color:"+(s.atr?RED:"#b0b8c1")+";font-weight:800'>"+s.atr+"</td><td class='c' style='color:"+GRN+";font-weight:700'>"+s.conc+"</td>"
+      +"<td class='c'>"+(p.ativo===false?"<span class='bdg bdg-off'>INATIVO</span>":"<span class='bdg bdg-ok'>ATIVO</span>")+"</td>"
+      +"<td class='act'><button class='ibedt' title='Ver ações em aberto' onclick=\"paPesVer('"+p.id+"')\"><i class='ti ti-list-search'></i></button>"
+      +"<button class='ibedt pa-ed' title='Editar' onclick=\"paPesForm('"+p.id+"')\"><i class='ti ti-edit'></i></button>"
+      +"<button class='ibdel pa-ed' title='Excluir' onclick=\"paPesExcluir('"+p.id+"')\"><i class='ti ti-trash'></i></button></td></tr>";
+  }).join("");
+  el.innerHTML="<div class='pg-hd'><div><h1 class='h1'>Pessoas Envolvidas</h1><div class='sub'>Responsáveis e apoio das ações do plano (QUEM?)</div></div>"
+    +"<button class='btnp btn-ic' onclick='paPesForm()'><i class='ti ti-user-plus'></i>Nova pessoa</button></div>"
+    +"<div class='ga' style='margin-bottom:1rem'>"
+    +sCard("Pessoas cadastradas",L.length,B,"ti-users-group")
+    +sCard("Ativas",at,GRN,"ti-user-check")
+    +sCard("Com ações atrasadas",comAtr,RED,"ti-alarm")
+    +"</div>"
+    +"<div class='card'>"+(L.length?"<div class='etab-wrap'><table class='etab'><thead><tr>"
+    +["NOME","CARGO / FUNÇÃO","SETOR","TIPO","E-MAIL","TELEFONE"].map(function(h){return "<th style='cursor:default'>"+h+"</th>";}).join("")
+    +["AÇÕES","EM ABERTO","ATRASADAS","CONCLUÍDAS","SITUAÇÃO",""].map(function(h){return "<th class='c' style='cursor:default'>"+h+"</th>";}).join("")
+    +"</tr></thead><tbody>"+rows+"</tbody></table></div>"
+    :"<div class='empty'><i class='ti ti-users-group'></i>Nenhuma pessoa cadastrada. Clique em Nova pessoa.</div>")+"</div>";
+}
+function paPesForm(id){
+  var p=id?paPes(id):null,tipo=p?p.tipo||"interno":"interno",at=!p||p.ativo!==false;
+  var tb=Object.keys(PA_TIPO).map(function(k){return "<button type='button' class='seg-b"+(k===tipo?" on":"")+"' id='pp-t-"+k+"' onclick=\"paPesTipo('"+k+"')\">"+PA_TIPO[k].lb+"</button>";}).join("");
+  paMd("md-pap","<i class='ti ti-user'></i>"+(p?"Editar pessoa":"Nova pessoa"),
+    "<input type='hidden' id='pp-id' value='"+(p?p.id:"")+"'/><input type='hidden' id='pp-tipo' value='"+tipo+"'/><input type='hidden' id='pp-ativo' value='"+(at?"1":"0")+"'/>"
+    +"<div class='fr'><label class='lbl'>Nome</label><input type='text' id='pp-nome' list='pa-dl-emp' value='"+(p?esc(p.nome):"")+"' placeholder='Nome da pessoa ou empresa'/>"
+    +"<div class='hint'>Dica: comece a digitar para escolher um colaborador já cadastrado.</div></div>"
+    +"<div class='fr2'><div class='fr'><label class='lbl'>Cargo / função <span class='opt'>(opcional)</span></label><input type='text' id='pp-cargo' value='"+(p?esc(p.cargo||""):"")+"'/></div>"
+    +"<div class='fr'><label class='lbl'>Setor <span class='opt'>(opcional)</span></label><input type='text' id='pp-setor' list='pa-dl-onde' value='"+(p?esc(p.setor||""):"")+"'/></div></div>"
+    +"<div class='fr2'><div class='fr'><label class='lbl'>E-mail <span class='opt'>(opcional)</span></label><input type='email' id='pp-email' value='"+(p?esc(p.email||""):"")+"'/></div>"
+    +"<div class='fr'><label class='lbl'>Telefone <span class='opt'>(opcional)</span></label><input type='text' id='pp-fone' value='"+(p?esc(p.fone||""):"")+"'/></div></div>"
+    +"<div class='fr'><label class='lbl'>Tipo</label><div class='seg seg-full'>"+tb+"</div></div>"
+    +"<div class='fr'><label class='lbl'>Situação</label><div class='seg seg-full'>"
+    +"<button type='button' class='seg-b"+(at?" on":"")+"' id='pp-a1' onclick=\"paPesAtivo('1')\"><i class='ti ti-circle-check'></i>Ativa</button>"
+    +"<button type='button' class='seg-b"+(at?"":" on")+"' id='pp-a0' onclick=\"paPesAtivo('0')\"><i class='ti ti-lock'></i>Inativa</button></div>"
+    +"<div class='hint'>Pessoa inativa não aparece para novas ações, mas continua nas ações já lançadas.</div></div>"
+    +paDatalists()
+    +"<div class='mdl-ft'><button class='btng' onclick=\"paMdFechar('md-pap')\">Cancelar</button><button class='btnp' onclick='paPesSalvar()'>Salvar</button></div>",540);
+}
+function paPesTipo(k){document.getElementById("pp-tipo").value=k;Object.keys(PA_TIPO).forEach(function(t){document.getElementById("pp-t-"+t).classList.toggle("on",t===k);});}
+function paPesAtivo(v){document.getElementById("pp-ativo").value=v;document.getElementById("pp-a1").classList.toggle("on",v==="1");document.getElementById("pp-a0").classList.toggle("on",v==="0");}
+function paPesSalvar(){
+  var id=gv("pp-id"),nome=gv("pp-nome").trim();
+  if(!nome){alert("Informe o nome.");return;}
+  if((DB.planopess||[]).some(function(p){return p.id!==id&&p.nome.toLowerCase()===nome.toLowerCase();})){alert("Já existe uma pessoa com esse nome.");return;}
+  var o={nome:nome,cargo:gv("pp-cargo").trim(),setor:gv("pp-setor").trim(),email:gv("pp-email").trim(),fone:gv("pp-fone").trim(),tipo:gv("pp-tipo")||"interno",ativo:gv("pp-ativo")!=="0"};
+  if(id){var p=paPes(id);if(p)Object.assign(p,o);}else{o.id=uid();DB.planopess=(DB.planopess||[]).concat([o]);}
+  paMdFechar("md-pap");dbSave();rPlanoPess();
+}
+function paPesExcluir(id){
+  var p=paPes(id);if(!p)return;var n=paPesStats(id).tot;
+  if(!confirm("Excluir "+p.nome+"?"+(n?"\n\nEsta pessoa está em "+n+" ação(ões) e será retirada do campo QUEM delas. Para manter o histórico, prefira marcar como Inativa.":"")))return;
+  (DB.plano||[]).forEach(function(a){if((a.quem||[]).indexOf(id)>=0)a.quem=a.quem.filter(function(x){return x!==id;});});
+  DB.planopess=DB.planopess.filter(function(x){return x.id!==id;});dbSave();rPlanoPess();
+}
+function paPesVer(id){
+  if(ACESSO&&permTela("plano")==="nenhum")return;
+  PA_F.lanc={q:"",sit:"",quem:id,onde:""};go("plano");
+}
+
+// ═══ DASHBOARD DO PLANO ═══
+function paDashLista(){
+  return (DB.plano||[]).filter(function(a){
+    if(PA_DF.quem&&(a.quem||[]).indexOf(PA_DF.quem)<0)return false;
+    if(PA_DF.onde&&(a.onde||"")!==PA_DF.onde)return false;
+    return true;
+  });
+}
+function paStats(L){
+  var S={tot:L.length,sit:{},custo:0,custoConc:0,pctMed:0,porQuem:{},porOnde:{},porMes:{},atrasadas:[],proximas:[]};
+  PA_SIT_ORD.forEach(function(k){S.sit[k]=0;});
+  var hj=hoje(),lim=paAddDias(hj,15),np=0,sp=0;
+  L.forEach(function(a){
+    var k=paSit(a);S.sit[k]++;
+    if(typeof a.quanto==="number"){S.custo+=a.quanto;if(k==="conc"||k==="catr")S.custoConc+=a.quanto;}
+    if(k!=="canc"){np++;sp+=+a.pct||0;}
+    var q=paQuem(a);if(!q.length)q=[{nome:"Sem responsável"}];
+    q.forEach(function(p){var r=S.porQuem[p.nome]=S.porQuem[p.nome]||{tot:0};r.tot++;r[k]=(r[k]||0)+1;});
+    var o=a.onde||"Não informado",ro=S.porOnde[o]=S.porOnde[o]||{tot:0};ro.tot++;ro[k]=(ro[k]||0)+1;
+    if(k!=="canc"){var m=a.fim?a.fim.slice(0,7):"_",rm=S.porMes[m]=S.porMes[m]||{conc:0,ab:0,atr:0};if(k==="conc"||k==="catr")rm.conc++;else if(k==="atr")rm.atr++;else rm.ab++;}
+    if(k==="atr")S.atrasadas.push(a);
+    if(paAberta(a)&&a.fim&&a.fim>=hj&&a.fim<=lim)S.proximas.push(a);
+  });
+  S.pctMed=np?sp/np:0;
+  S.concTot=S.sit.conc+S.sit.catr;
+  S.pctConc=S.tot-S.sit.canc?S.concTot/(S.tot-S.sit.canc)*100:0;
+  S.atrasadas.sort(function(a,b){return a.fim.localeCompare(b.fim)||a.n-b.n;});
+  S.proximas.sort(function(a,b){return a.fim.localeCompare(b.fim)||a.n-b.n;});
+  function ordTot(map){return Object.keys(map).sort(function(a,b){return map[b].tot-map[a].tot||a.localeCompare(b);});}
+  S.quemLbs=ordTot(S.porQuem).slice(0,12);S.ondeLbs=ordTot(S.porOnde).slice(0,12);
+  S.mesLbs=Object.keys(S.porMes).sort(function(a,b){if(a==="_")return 1;if(b==="_")return -1;return a.localeCompare(b);});
+  S.ks=PA_SIT_ORD.filter(function(k){return S.sit[k]>0;});
+  return S;
+}
+function paBaseCfg(s){return {responsive:s===1,maintainAspectRatio:false,animation:s===1?{}:false};}
+function paLeg(s){return {position:"top",labels:{boxWidth:11*s,font:{size:11.5*s},padding:9*s,
+  generateLabels:function(ch){return ch.data.datasets.map(function(ds,i){return {text:ds.label,fillStyle:ds.hoverBackgroundColor,strokeStyle:ds.hoverBackgroundColor,lineWidth:0,hidden:!ch.isDatasetVisible(i),datasetIndex:i};});}}};}
+function paCfgSit(S,s){
+  if(!S.ks.length)return null;
+  var cols=S.ks.map(function(k){return PA_SIT[k].co;});
+  return {type:"doughnut",plugins:relDL(),
+    data:{labels:S.ks.map(function(k){return PA_SIT[k].lb;}),datasets:[{data:S.ks.map(function(k){return S.sit[k];}),backgroundColor:segGrad(cols),hoverBackgroundColor:cols,borderWidth:2*s,borderColor:"#fff",hoverOffset:6}]},
+    options:Object.assign(paBaseCfg(s),{cutout:"56%",layout:{padding:6*s},
+      plugins:{legend:{position:"right",labels:{boxWidth:11*s,font:{size:12*s},padding:9*s,
+          generateLabels:function(ch){var l=Chart.overrides.doughnut.plugins.legend.labels.generateLabels(ch);l.forEach(function(it,i){it.fillStyle=cols[i];it.strokeStyle=cols[i];it.text=it.text+" ("+S.sit[S.ks[i]]+")";});return l;}}},
+        tooltip:{callbacks:{label:function(c){return c.label+": "+c.raw+" ("+Math.round(c.raw/S.tot*100)+"%)";}}},
+        datalabels:{color:"#fff",font:{size:13*s,weight:800},textStrokeColor:"rgba(0,0,0,.25)",textStrokeWidth:2,formatter:function(v){return v;}}}})};
+}
+function paCfgStack(lbs,map,ks,s,horiz){
+  if(!lbs.length)return null;
+  var ds=ks.map(function(k){return {label:PA_SIT[k].lb,data:lbs.map(function(l){return map[l][k]||0;}),backgroundColor:PA_SIT[k].co,hoverBackgroundColor:PA_SIT[k].co,borderRadius:3*s,borderSkipped:false,maxBarThickness:(horiz?24:54)*s};});
+  var tk={font:{size:11*s},color:"#7a838c",precision:0},cat={ticks:{font:{size:11.5*s,weight:600},color:"#555"},grid:{display:false},stacked:true};
+  var val={beginAtZero:true,stacked:true,ticks:tk,grid:{color:"#f1f4f8"},border:{display:false}};
+  return {type:"bar",plugins:relDL(),data:{labels:lbs,datasets:ds},
+    options:Object.assign(paBaseCfg(s),{indexAxis:horiz?"y":"x",
+      plugins:{legend:paLeg(s),datalabels:{display:function(c){return c.dataset.data[c.dataIndex]>0;},color:"#fff",font:{size:11*s,weight:800}}},
+      scales:horiz?{x:val,y:cat}:{x:cat,y:val}})};
+}
+function paCfgMes(S,s){
+  if(!S.mesLbs.length)return null;
+  var lbs=S.mesLbs.map(function(m){return m==="_"?"Sem prazo":fmtM(m);});
+  function d(k){return S.mesLbs.map(function(m){return S.porMes[m][k];});}
+  function ds(lb,k,c){return {label:lb,data:d(k),backgroundColor:vGrad(c),hoverBackgroundColor:c,dlc:c,borderRadius:5*s,borderSkipped:false,maxBarThickness:40*s};}
+  return {type:"bar",plugins:relDL(),
+    data:{labels:lbs,datasets:[ds("Concluídas","conc",GRN),ds("Em aberto no prazo","ab","#1f5fa8"),ds("Atrasadas","atr",RED)]},
+    options:Object.assign(paBaseCfg(s),{layout:{padding:{top:6*s}},
+      plugins:{legend:paLeg(s),datalabels:{display:function(c){return c.dataset.data[c.dataIndex]>0;},anchor:"end",align:"top",offset:2*s,color:function(c){return c.dataset.dlc;},font:{size:11.5*s,weight:800}}},
+      scales:{y:{beginAtZero:true,grace:"15%",ticks:{precision:0,font:{size:11*s},color:"#7a838c"},grid:{color:"#f1f4f8"},border:{display:false}},
+              x:{ticks:{font:{size:11.5*s,weight:600},color:"#555"},grid:{display:false}}}})};
+}
+function paListaMini(L,vazio,tipo){
+  if(!L.length)return "<div style='color:#aaa;text-align:center;padding:1.25rem;font-size:12px'>"+vazio+"</div>";
+  return "<div class='pa-lst' style='max-height:330px;overflow:auto'>"+L.slice(0,15).map(function(a){
+    var d=tipo==="atr"?paDias(a.fim,hoje()):paDias(hoje(),a.fim),c=tipo==="atr"?RED:"#b8820a";
+    return "<div class='erow' style='cursor:pointer' onclick=\"paAbrir('"+a.id+"')\"><div class='erow-main'>"
+      +"<div class='erow-nm' style='font-size:13px'><span style='color:"+B+"'>#"+esc(a.n)+"</span> "+esc(a.oque)+"</div>"
+      +"<div class='erow-sub'>"+(esc(paQuemTxt(a))||"Sem responsável")+(a.onde?" &middot; "+esc(a.onde):"")+" &middot; prazo "+fmtD(a.fim)+"</div></div>"
+      +"<span style='background:"+c+"18;color:"+c+";border-radius:6px;padding:2px 9px;font-size:11.5px;font-weight:800;white-space:nowrap'>"
+      +(tipo==="atr"?d+" dia"+(d!==1?"s":"")+" de atraso":d===0?"vence hoje":"em "+d+" dia"+(d!==1?"s":""))+"</span></div>";
+  }).join("")+(L.length>15?"<div class='hint' style='text-align:center'>+ "+(L.length-15)+" ações</div>":"")+"</div>";
+}
+function rPlanoDash(){
+  paSeedSave();killCH();
+  var el=document.getElementById("p-planodash");if(!el)return;
+  var L=paDashLista(),S=paStats(L),c=paCfg(),pess=paPessOrd(),setores=paSetores();
+  var prog=S.ks.map(function(k){return "<div title='"+PA_SIT[k].lb+": "+S.sit[k]+"' style='width:"+(S.sit[k]/S.tot*100)+"%;background:"+PA_SIT[k].co+"'></div>";}).join("");
+  var leg=S.ks.map(function(k){return "<span style='cursor:pointer' onclick=\"paIrSit('"+k+"')\"><i style='background:"+PA_SIT[k].co+"'></i>"+PA_SIT[k].lb+": <b>"+S.sit[k]+"</b> ("+Math.round(S.sit[k]/S.tot*100)+"%)</span>";}).join("");
+  var hb=Math.max(220,Math.max(S.quemLbs.length,S.ondeLbs.length)*34+60);
+  function card(id,t,ic,col,h,extra){return "<div class='card' style='padding:.875rem'><div style='font-weight:700;font-size:13px;color:"+col+";margin-bottom:.5rem'><i class='ti "+ic+"' style='margin-right:4px'></i>"+t+(extra||"")+"</div><div style='height:"+h+"px;position:relative'><canvas id='"+id+"'></canvas></div></div>";}
+  el.innerHTML="<div class='pg-hd'><div><h1 class='h1'>Dashboard do Plano de Ação</h1><div class='sub'>"+esc(c.num||"Plano 5W2H")+(c.prev?" &middot; previsão de término "+fmtD(c.prev):"")+"</div></div>"
+    +"<div style='display:flex;gap:8px;flex-wrap:wrap;align-items:center'>"
+    +"<div class='mes-box'><span>Quem:</span><select onchange='PA_DF.quem=this.value;rPlanoDash()'><option value=''>Todos</option>"+pess.map(function(p){return "<option value='"+p.id+"'"+(PA_DF.quem===p.id?" selected":"")+">"+esc(p.nome)+"</option>";}).join("")+"</select></div>"
+    +"<div class='mes-box'><span>Onde:</span><select onchange='PA_DF.onde=this.value;rPlanoDash()'><option value=''>Todos</option>"+setores.map(function(s){return "<option value='"+esc(s)+"'"+(PA_DF.onde===s?" selected":"")+">"+esc(s)+"</option>";}).join("")+"</select></div>"
+    +"<button class='btnp btn-ic' onclick='paDashPDF()'><i class='ti ti-printer'></i>Imprimir PDF</button></div></div>"
+    +paInfoHtml().replace(/<button class='pa-ed[^]*?<\/button>/,"")
+    +(S.tot?"<div class='ga' style='margin-bottom:1rem'>"
+      +sCard("Total de ações",S.tot,B,"ti-list-check")
+      +sCard("Concluídas",S.concTot,GRN,"ti-circle-check",Math.round(S.pctConc)+"% do plano"+(S.sit.catr?" · "+S.sit.catr+" com atraso":""))
+      +sCard("Em andamento",S.sit.and,"#1f5fa8","ti-progress")
+      +sCard("Atrasadas",S.sit.atr,RED,"ti-alarm","prazo vencido e não concluídas")
+      +sCard("Não iniciadas",S.sit.nao,"#6b7580","ti-player-pause")
+      +sCard("Progresso médio",Math.round(S.pctMed)+"%",BL,"ti-chart-arcs","média do % das ações")
+      +sCard("Custo previsto",fmtBRL(S.custo),GLD,"ti-coin","concluído: "+fmtBRL(S.custoConc))
+      +"</div>"
+      +"<div class='card' style='margin-bottom:1rem'><div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem'><div style='font-weight:700;font-size:13px;color:"+B+"'><i class='ti ti-target' style='margin-right:4px'></i>Execução do plano</div>"
+      +"<div style='font-size:22px;font-weight:800;color:"+GRN+"'>"+Math.round(S.pctConc)+"% <span style='font-size:12px;color:#888;font-weight:600'>concluído</span></div></div>"
+      +"<div class='pa-prog'>"+prog+"</div><div class='pa-leg'>"+leg+"</div></div>"
+      +"<div class='pa-g2' style='margin-bottom:1rem'>"
+      +card("ch-pa-sit","Situação das ações","ti-chart-donut",B,250,"<i class='ti ti-hand-click' title='Clique para ver as ações' style='float:right;color:#b0b8c1;font-size:15px'></i>")
+      +card("ch-pa-mes","Prazos por mês (data fim)","ti-calendar-stats",B,250)
+      +"</div><div class='pa-g2' style='margin-bottom:1rem'>"
+      +card("ch-pa-quem","Ações por responsável (quem)","ti-users-group",B,hb)
+      +card("ch-pa-onde","Ações por local / setor (onde)","ti-map-pin",B,hb)
+      +"</div><div class='pa-g2'>"
+      +"<div class='card'><div style='font-weight:700;font-size:13px;color:"+RED+";margin-bottom:.5rem'><i class='ti ti-alarm' style='margin-right:4px'></i>Ações atrasadas ("+S.atrasadas.length+")</div>"+paListaMini(S.atrasadas,"Nenhuma ação atrasada.","atr")+"</div>"
+      +"<div class='card'><div style='font-weight:700;font-size:13px;color:#b8820a;margin-bottom:.5rem'><i class='ti ti-calendar-due' style='margin-right:4px'></i>Vencem nos próximos 15 dias ("+S.proximas.length+")</div>"+paListaMini(S.proximas,"Nenhum prazo nos próximos 15 dias.","prox")+"</div>"
+      +"</div>"
+    :"<div class='card'><div class='empty'><i class='ti ti-chart-donut'></i>Nenhuma ação "+(PA_DF.quem||PA_DF.onde?"com esses filtros.":"lançada no plano ainda.")+"</div></div>");
+  if(!S.tot){window._paDash=S;return;}
+  CH.pasit=new Chart(document.getElementById("ch-pa-sit"),paCfgSit(S,1));
+  CH.pames=new Chart(document.getElementById("ch-pa-mes"),paCfgMes(S,1));
+  CH.paquem=new Chart(document.getElementById("ch-pa-quem"),paCfgStack(S.quemLbs,S.porQuem,S.ks,1,true));
+  CH.paonde=new Chart(document.getElementById("ch-pa-onde"),paCfgStack(S.ondeLbs,S.porOnde,S.ks,1,true));
+  var cv=CH.pasit.canvas;
+  cv.addEventListener("click",function(ev){var e=CH.pasit.getElementsAtEventForMode(ev,"nearest",{intersect:true},true);if(e.length)paIrSit(S.ks[e[0].index]);});
+  cv.addEventListener("mousemove",function(ev){cv.style.cursor=CH.pasit.getElementsAtEventForMode(ev,"nearest",{intersect:true},false).length?"pointer":"default";});
+  window._paDash=S;
+}
+
+// ═══ PDF (A4/A3 paisagem, cabecalho com logo e rodape com paginacao) ═══
+var PA_RODAPE="TORR Equipamentos · Plano de Ação 5W2H";
+function paInfoPDF(K,y){
+  var c=paCfg(),doc=K.doc,C=K.C,x=K.mg,cw=K.cw;
+  var ws=[.13,.15,.10,.12],wo=cw*(1-ws.reduce(function(a,b){return a+b;},0));
+  K.font(7.4);var obj=doc.splitTextToSize(c.obj||"—",wo-6).slice(0,3);
+  var h=Math.max(14,8.4+obj.length*3.1);
+  K.panel(x,y,cw,h);K.fill(C.bl);doc.rect(x,y,1.3,h,"F");
+  var f=[["PLANO Nº",c.num||"—"],["RESPONSÁVEL",c.resp||"—"],["DATA DE INÍCIO",c.ini?fmtD(c.ini):"—"],["PREVISÃO DE TÉRMINO",c.prev?fmtD(c.prev):"—"]],cx=x;
+  doc.setDrawColor(C.line[0],C.line[1],C.line[2]);doc.setLineWidth(.25);
+  f.forEach(function(it,i){
+    var w=cw*ws[i];K.font(6,true);K.txt(C.mut);doc.text(it[0],cx+4,y+5);
+    K.font(9,true);K.txt(C.ink);doc.text(doc.splitTextToSize(it[1],w-6)[0],cx+4,y+10.2);
+    cx+=w;doc.line(cx,y+2,cx,y+h-2);
+  });
+  K.font(6,true);K.txt(C.mut);doc.text("OBJETIVO",cx+4,y+5);
+  K.font(7.4);K.txt(C.txt);doc.text(obj,cx+4,y+9.2,{lineHeightFactor:1.2});
+  return y+h+5;
+}
+function paTabPDF(K,y,cols,rows,fs){
+  var doc=K.doc,C=K.C,x=K.mg,tw=cols.reduce(function(a,c){return a+c.w;},0),lh=fs*.3528*1.2,pad=1.5,lim=K.H-14;
+  function ax(c,cx){return c.al==="r"?cx+c.w-1.4:c.al==="c"?cx+c.w/2:cx+1.4;}
+  function al(c){return c.al==="r"?"right":c.al==="c"?"center":"left";}
+  function head(){
+    K.font(fs,true);
+    var ls=cols.map(function(c){return doc.splitTextToSize(c.h,c.w-2);}),nl=Math.max.apply(null,ls.map(function(l){return l.length;})),hh=nl*lh+pad*2+.6;
+    K.fill(C.b);doc.rect(x,y,tw,hh,"F");K.txt([255,255,255]);
+    var cx=x;cols.forEach(function(c,i){var l=ls[i],y0=y+hh/2-(l.length-1)*lh/2+fs*.3528*.35;l.forEach(function(t,j){doc.text(t,ax(c,cx),y0+j*lh,{align:al(c)});});cx+=c.w;});
+    y+=hh;
+  }
+  head();
+  rows.forEach(function(r,i){
+    var cel=cols.map(function(c){
+      if(c.tipo)return [];
+      var v=r[c.k];v=v==null?"":String(v);K.font(fs,!!c.b);
+      var l=doc.splitTextToSize(v,c.w-2.8);if(l.length>14){l=l.slice(0,14);l[13]+="...";}return l;
+    });
+    var nl=Math.max.apply(null,[1].concat(cel.map(function(l){return l.length;})));
+    var h=Math.max(r._atr?9.6:7,nl*lh+pad*2);
+    if(y+h>lim){doc.addPage();y=K.header();head();}
+    if(i%2===1){K.fill([248,250,252]);doc.rect(x,y,tw,h,"F");}
+    var cx=x;
+    cols.forEach(function(c,ci){
+      if(c.tipo==="st"){
+        var S=PA_SIT[r._sit],pw=c.w-2.6,ph=4.3,fz=fs-.7;K.font(fz,true);
+        while(fz>4.6&&doc.getTextWidth(S.sh)>pw-1.6){fz-=.2;K.font(fz,true);}
+        var bg=paRGB(S.bg),co=paRGB(S.co);
+        doc.setFillColor(bg[0],bg[1],bg[2]);doc.roundedRect(cx+1.3,y+pad,pw,ph,1.2,1.2,"F");
+        K.txt(co);doc.text(S.sh,cx+1.3+pw/2,y+pad+ph/2+fz*.3528*.36,{align:"center"});
+        if(r._atr){K.font(fs-1.2,true);K.txt(C.red);doc.text(r._atr,cx+1.3+pw/2,y+pad+ph+2.8,{align:"center"});}
+      }else if(c.tipo==="pct"){
+        var p=Math.max(0,Math.min(100,+r.pct||0)),bw=c.w-3,col=paRGB(PA_SIT[r._sit].co);
+        K.font(fs,true);K.txt(col);doc.text(p+"%",cx+c.w/2,y+pad+fs*.3528*.8,{align:"center"});
+        doc.setFillColor(230,233,237);doc.rect(cx+1.5,y+pad+3.4,bw,1.3,"F");
+        if(p){doc.setFillColor(col[0],col[1],col[2]);doc.rect(cx+1.5,y+pad+3.4,bw*p/100,1.3,"F");}
+      }else{
+        K.font(fs,!!c.b);K.txt(c.cor?c.cor(r):C.txt);
+        cel[ci].forEach(function(t,j){doc.text(t,ax(c,cx),y+pad+fs*.3528*.85+j*lh,{align:al(c)});});
+      }
+      cx+=c.w;
+    });
+    doc.setDrawColor(C.line[0],C.line[1],C.line[2]);doc.setLineWidth(.2);doc.line(x,y+h,x+tw,y+h);
+    cx=x;cols.forEach(function(c,ci){if(ci>0)doc.line(cx,y,cx,y+h);cx+=c.w;});
+    y+=h;
+  });
+  return y;
+}
+function paAssinPDF(K,y){
+  var doc=K.doc,C=K.C,c=paCfg(),gap=18,w=(K.cw-gap*2)/3;
+  if(y+30>K.H-14){doc.addPage();y=K.header();}
+  y+=17;doc.setDrawColor(120,120,120);doc.setLineWidth(.3);
+  [["Responsável pelo plano",c.resp],["Aprovação / Gerência",""],["Consultoria / Acompanhamento",""]].forEach(function(s,i){
+    var x=K.mg+i*(w+gap);doc.line(x,y,x+w,y);
+    K.font(7.6,true);K.txt(C.ink);doc.text(s[0],x+w/2,y+4,{align:"center"});
+    K.font(6.6);K.txt(C.mut);doc.text((s[1]?s[1]+"   ·   ":"")+"Data: ____/____/________",x+w/2,y+8,{align:"center"});
+  });
+  return y+12;
+}
+function paPDFModal(ctx){
+  var nTela=paLista(ctx).length;
+  function radio(nm,v,lb,on){return "<label class='pdf-opt'><input type='radio' name='"+nm+"' value='"+v+"'"+(on?" checked":"")+"/>"+lb+"</label>";}
+  function chk(id,lb,on){return "<label style='display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;margin-bottom:6px'><input type='checkbox' id='"+id+"'"+(on?" checked":"")+" style='width:auto'/> "+lb+"</label>";}
+  paMd("md-papdf","<i class='ti ti-printer'></i>Imprimir plano de ação (PDF)",
+    "<div class='fr'><label class='lbl'>Ações</label><div class='pdf-opts'>"
+    +radio("papc","tela","Como está na tela ("+nTela+")",true)
+    +radio("papc","abertas","Em aberto ("+paBase("lanc").length+")")
+    +radio("papc","conc","Concluídas / canceladas ("+paBase("conc").length+")")
+    +radio("papc","todas","Todas ("+(DB.plano||[]).length+")")+"</div></div>"
+    +"<div class='fr'><label class='lbl'>Papel</label><div class='pdf-opts'>"+radio("pappap","a4","A4 paisagem",true)+radio("pappap","a3","A3 paisagem")+"</div></div>"
+    +"<div class='fr'>"+chk("pap-ind","Incluir indicadores no topo",true)+chk("pap-obs","Incluir coluna de observações",true)+chk("pap-ass","Incluir campos de assinatura no final",true)+"</div>"
+    +"<div class='hint'>O PDF sai com cabeçalho (logo, título, plano e data de geração) e rodapé com numeração de páginas em todas as folhas.</div>"
+    +"<div class='mdl-ft'><button class='btng' onclick=\"paMdFechar('md-papdf')\">Cancelar</button>"
+    +"<button class='btnp btn-ic' onclick=\"paGerarPDF('"+ctx+"')\"><i class='ti ti-file-download'></i>Gerar PDF</button></div>",560);
+}
+function paGerarPDF(ctx){
+  if(!(window.jspdf&&window.jspdf.jsPDF)){alert("A biblioteca de PDF ainda está carregando. Aguarde alguns segundos e tente novamente.");return;}
+  var op=_radio("papc")||"tela",papel=_radio("pappap")||"a4";
+  var comInd=document.getElementById("pap-ind").checked,comObs=document.getElementById("pap-obs").checked,comAss=document.getElementById("pap-ass").checked;
+  var byN=function(a,b){return a.n-b.n;},L;
+  if(op==="tela")L=paLista(ctx);
+  else if(op==="abertas")L=paBase("lanc").sort(byN);
+  else if(op==="conc")L=paBase("conc").sort(byN);
+  else L=(DB.plano||[]).slice().sort(byN);
+  if(!L.length){alert("Nenhuma ação para imprimir com essa seleção.");return;}
+  var opLb={tela:ctx==="lanc"?"Ações em aberto (filtro da tela)":"Ações finalizadas (filtro da tela)",abertas:"Ações em aberto",conc:"Ações concluídas e canceladas",todas:"Todas as ações"}[op];
+  var c=paCfg(),S=paStats(L);
+  var K=mkPdfKit("Plano de Ação - 5W2H",(c.num?c.num+"  |  ":"")+opLb+"  |  "+L.length+" aç"+(L.length!==1?"ões":"ão"),"landscape",papel),doc=K.doc,C=K.C,cw=K.cw;
+  var comDtc=L.some(function(a){return !paAberta(a);}),comPct=L.some(paAberta);
+  var P=[["n","ID",.42,"c"],["oque","O QUE?",2.3],["porque","POR QUÊ?",2.1],["como","COMO?",2.3],["quem","QUEM?",1.2],["ini","INÍCIO",.82,"c"],["fim","FIM",.82,"c"]];
+  if(comDtc)P.push(["dtc","CONCLUÍDO EM",.88,"c"]);
+  P.push(["onde","ONDE?",1.0],["quanto","QUANTO?",.98,"r"],["st","STATUS",1.12,"c","st"]);
+  if(comPct)P.push(["pct","%",.62,"c","pct"]);
+  if(comObs)P.push(["obs","OBSERVAÇÕES",1.65]);
+  var soma=P.reduce(function(a,p){return a+p[2];},0),u=cw/soma;
+  var cols=P.map(function(p){var o={k:p[0],h:p[1],w:p[2]*u,al:p[3],tipo:p[4]};
+    if(p[0]==="n"){o.b=true;o.cor=function(){return C.b;};}
+    if(p[0]==="oque"){o.b=true;o.cor=function(){return C.ink;};}
+    if(p[0]==="fim")o.cor=function(r){return r._sit==="atr"?C.red:C.txt;};
+    if(p[0]==="dtc")o.cor=function(r){return r._sit==="catr"?[184,130,10]:C.grn;};
+    return o;});
+  var rows=L.map(function(a){
+    var k=paSit(a),d=k==="atr"?paDias(a.fim,hoje()):0;
+    return {_sit:k,_atr:k==="atr"?d+" dia"+(d!==1?"s":"")+" de atraso":"",n:a.n,oque:a.oque,porque:a.porque,como:a.como,quem:paQuemTxt(a)||"—",
+      ini:a.ini?fmtD(a.ini):"—",fim:a.fim?fmtD(a.fim):"—",dtc:paAberta(a)?"—":(a.dtc?fmtD(a.dtc):"—"),onde:a.onde||"—",
+      quanto:typeof a.quanto==="number"?fmtBRL(a.quanto):"—",pct:paAberta(a)?a.pct:"",obs:a.obs||""};
+  });
+  var y=K.header();
+  y=paInfoPDF(K,y);
+  if(comInd){
+    var ks=[["Ações no relatório",String(S.tot),Math.round(S.pctMed)+"% de progresso médio",C.b],
+      ["Concluídas",String(S.concTot),Math.round(S.pctConc)+"% do total"+(S.sit.catr?" · "+S.sit.catr+" c/ atraso":""),C.grn],
+      ["Em andamento",String(S.sit.and),"",[31,95,168]],["Atrasadas",String(S.sit.atr),"prazo vencido",C.red],
+      ["Não iniciadas",String(S.sit.nao),"",C.mut],["Custo previsto",fmtBRL(S.custo),"concluído: "+fmtBRL(S.custoConc),C.gld]];
+    var gap=3.2,kw=(cw-gap*(ks.length-1))/ks.length,kh=19;
+    ks.forEach(function(k,i){K.kpi(K.mg+i*(kw+gap),y,kw,kh,k[0],k[1],k[2],k[3]);});
+    y+=kh+6;
+  }
+  K.section("Ações do plano (5W2H)",y);y+=3;
+  y=paTabPDF(K,y,cols,rows,papel==="a3"?7.6:6.5);
+  var tot=L.reduce(function(a,x){return a+(typeof x.quanto==="number"?x.quanto:0);},0);
+  if(y+7>K.H-14){doc.addPage();y=K.header();}
+  K.fill([232,234,236]);doc.rect(K.mg,y,cw,6,"F");K.font(7.4,true);K.txt(C.b);
+  doc.text("TOTAL: "+L.length+" aç"+(L.length!==1?"ões":"ão"),K.mg+2,y+4.1);
+  doc.text("Custo previsto (QUANTO?): "+fmtBRL(tot),K.W-K.mg-2,y+4.1,{align:"right"});
+  y+=10;
+  K.font(6.6);K.txt(C.mut);
+  doc.text("Atrasado = prazo (FIM) vencido e ação não concluída.  Concluído com atraso = data de conclusão depois do FIM.  5W2H: O que, Por quê, Como, Quem, Quando (início/fim), Onde, Quanto.",K.mg,y);
+  if(comAss)paAssinPDF(K,y+2);
+  K.finalizar("plano-de-acao-5w2h-"+hoje()+".pdf",PA_RODAPE);
+  paMdFechar("md-papdf");
+}
+function paDashPDF(){
+  if(!(window.jspdf&&window.jspdf.jsPDF)||typeof Chart==="undefined"){alert("As bibliotecas ainda estão carregando. Aguarde alguns segundos e tente novamente.");return;}
+  var S=paStats(paDashLista()),c=paCfg();
+  if(!S.tot){alert("Nenhuma ação para o dashboard com esses filtros.");return;}
+  var fil=[];if(PA_DF.quem){var p=paPes(PA_DF.quem);fil.push("Quem: "+(p?p.nome:"—"));}if(PA_DF.onde)fil.push("Onde: "+PA_DF.onde);
+  var K=mkPdfKit("Dashboard do Plano de Ação",(c.num?c.num+"  |  ":"")+(fil.length?fil.join("  |  "):"Todas as ações")+"  |  "+S.tot+" aç"+(S.tot!==1?"ões":"ão"),"landscape","a4"),doc=K.doc,C=K.C,cw=K.cw,mg=K.mg,gap=3.2;
+  var y=K.header();y=paInfoPDF(K,y);
+  var ks=[["Total de ações",String(S.tot),"",C.b],["Concluídas",String(S.concTot),Math.round(S.pctConc)+"% do plano",C.grn],["Em andamento",String(S.sit.and),"",[31,95,168]],
+    ["Atrasadas",String(S.sit.atr),"prazo vencido",C.red],["Não iniciadas",String(S.sit.nao),"",C.mut],["Progresso médio",Math.round(S.pctMed)+"%","média do %",C.bl],["Custo previsto",fmtBRL(S.custo),"concluído: "+fmtBRL(S.custoConc),C.gld]];
+  var kw=(cw-gap*6)/7,kh=19;ks.forEach(function(k,i){K.kpi(mg+i*(kw+gap),y,kw,kh,k[0],k[1],k[2],k[3]);});y+=kh+5;
+  // barra de execucao
+  K.font(7.6,true);K.txt(C.b);doc.text("Execução do plano",mg,y+2.6);K.txt(C.grn);doc.text(Math.round(S.pctConc)+"% concluído",K.W-mg,y+2.6,{align:"right"});
+  var bx=mg,bw=cw,by=y+4;S.ks.forEach(function(k){var w=bw*S.sit[k]/S.tot,co=paRGB(PA_SIT[k].co);doc.setFillColor(co[0],co[1],co[2]);doc.rect(bx,by,w,3.6,"F");bx+=w;});
+  bx=mg;K.font(6.4,true);S.ks.forEach(function(k){var co=paRGB(PA_SIT[k].co),t=PA_SIT[k].lb+": "+S.sit[k];doc.setFillColor(co[0],co[1],co[2]);doc.rect(bx,by+5.6,2.4,2.4,"F");K.txt([80,80,80]);doc.text(t,bx+3.4,by+7.6);bx+=doc.getTextWidth(t)+9;});
+  y=by+12;
+  var ph=K.H-14-y,w3=(cw-gap*2)/3;
+  K.chartPanel(function(w,h){return paCfgSit(S,1.5);},mg,y,w3,ph,"Situação das ações",C.b);
+  K.chartPanel(function(w,h){return paCfgStack(S.quemLbs,S.porQuem,S.ks,1.5,true);},mg+w3+gap,y,w3,ph,"Ações por responsável (quem)",C.b);
+  K.chartPanel(function(w,h){return paCfgStack(S.ondeLbs,S.porOnde,S.ks,1.5,true);},mg+2*(w3+gap),y,w3,ph,"Ações por local / setor (onde)",C.b);
+  // folha 2: prazos, pessoas, atrasadas e proximas
+  doc.addPage();y=K.header();
+  var hw=(cw-gap)/2,h2=72;
+  K.chartPanel(paCfgMes(S,1.5),mg,y,hw,h2,"Prazos por mês (data fim)",C.b);
+  K.panel(mg+hw+gap,y,hw,h2);K.font(9,true);K.txt(C.b);doc.text("Resumo por pessoa",mg+hw+gap+4,y+6.5);
+  var pr=S.quemLbs.map(function(n){var r=S.porQuem[n];return {n:n,t:r.tot,c:(r.conc||0)+(r.catr||0),a:(r.and||0)+(r.nao||0),at:r.atr||0};});
+  var tw2=hw-8;
+  K.table(y+9.5,[{h:"PESSOA",k:"n",w:tw2*.33,b:true,cor:function(){return C.ink;}},{h:"AÇÕES",k:"t",w:tw2*.13,al:"c"},{h:"CONCLUÍDAS",k:"c",w:tw2*.19,al:"c",cor:function(){return C.grn;}},{h:"EM ABERTO",k:"a",w:tw2*.17,al:"c",cor:function(){return [31,95,168];}},{h:"ATRASADAS",k:"at",w:tw2*.18,al:"c",cor:function(r){return r.at?C.red:C.mut;}}],pr.slice(0,10),{x:mg+hw+gap+4,rh:5.4,fs:7});
+  y+=h2+7;
+  function lista(tit,L,tipo,cor){
+    if(y+20>K.H-14){doc.addPage();y=K.header();}
+    K.section(tit+" ("+L.length+")",y,cor);y+=3;
+    if(!L.length){K.font(8);K.txt(C.mut);doc.text(tipo==="atr"?"Nenhuma ação atrasada.":"Nenhum prazo nos próximos 15 dias.",mg+4,y+5);y+=12;return;}
+    var rr=L.map(function(a){var d=tipo==="atr"?paDias(a.fim,hoje()):paDias(hoje(),a.fim);
+      return {n:a.n,o:a.oque,q:paQuemTxt(a)||"—",w:a.onde||"—",f:fmtD(a.fim),d:tipo==="atr"?d+" dia"+(d!==1?"s":""):(d===0?"hoje":"em "+d+" dia"+(d!==1?"s":"")),p:(+a.pct||0)+"%"};});
+    y=K.table(y,[{h:"ID",k:"n",w:cw*.04,al:"c",b:true},{h:"O QUE?",k:"o",w:cw*.46,b:true,cor:function(){return C.ink;}},{h:"QUEM?",k:"q",w:cw*.17},{h:"ONDE?",k:"w",w:cw*.11},
+      {h:"PRAZO (FIM)",k:"f",w:cw*.08,al:"c"},{h:tipo==="atr"?"ATRASO":"VENCE",k:"d",w:cw*.08,al:"c",b:true,cor:function(){return cor;}},{h:"%",k:"p",w:cw*.06,al:"c"}],rr,{rh:5.8,fs:7.2,titulo:tit,cor:cor})+7;
+  }
+  lista("Ações atrasadas",S.atrasadas,"atr",C.red);
+  lista("Vencem nos próximos 15 dias",S.proximas,"prox",[184,130,10]);
+  K.finalizar("dashboard-plano-de-acao-"+hoje()+".pdf",PA_RODAPE);
 }
 
 </script>
